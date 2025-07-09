@@ -1,0 +1,68 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import path from 'path';
+import { pool } from './database/connection';
+
+import lojaRoutes from './routes/lojaRoutes'; 
+import produtoRoutes from './routes/produtoRoutes';
+import variacaoProdutoRoutes from './routes/variacaoProdutoRoutes'; 
+import clienteRoutes from './routes/clienteRoutes';
+import enderecoClienteRoutes from './routes/enderecoClienteRoutes';
+import pedidoRoutes from './routes/pedidoRoutes';
+import itemPedidoRoutes from './routes/itemPedidoRoutes';
+import avaliacaoProdutoRoutes from './routes/avaliacaoProdutoRoutes';
+import favoritoRoutes from './routes/favoritoRoutes';
+import avaliacaoLojaRoutes from './routes/avaliacaoLojaRoutes';
+import notificacaoRoutes from './routes/notificacaoRoutes';
+import chamadoRoutes from './routes/chamadoRoutes';
+import adminRoutes from './routes/adminRoutes';
+import relatorioRoutes from './routes/relatorioRoutes';
+import authRoutes from './routes/authRoutes';
+import uploadRoutes from './routes/uploadRoutes';
+
+dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3001;
+
+app.use(cors());
+app.use(express.json()); // precisa vir antes das rotas
+
+app.get('/', (req, res) => {
+  res.send('🚀 Backend ROUPPI rodando com sucesso!');
+});
+
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao consultar o banco' });
+  }
+});
+
+// Rotas da API
+app.use('/api/lojas', lojaRoutes);
+app.use('/api/produtos', produtoRoutes);
+app.use('/api/variacoes', variacaoProdutoRoutes);
+app.use('/api/clientes', clienteRoutes);
+app.use('/api/enderecos', enderecoClienteRoutes);
+app.use('/api/pedidos', pedidoRoutes);
+app.use('/api/itens-pedido', itemPedidoRoutes);
+app.use('/api/avaliacoes-produto', avaliacaoProdutoRoutes);
+app.use('/api/favoritos', favoritoRoutes);
+app.use('/api/avaliacoes-loja', avaliacaoLojaRoutes);
+app.use('/api/notificacoes', notificacaoRoutes);
+app.use('/api/chamados', chamadoRoutes);
+app.use('/api/admins', adminRoutes);
+app.use('/api/relatorios', relatorioRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/upload', uploadRoutes);
+
+// Servir imagens
+app.use('/uploads', express.static(path.resolve(__dirname, '..', 'uploads')));
+
+app.listen(port, () => {
+  console.log(`Servidor rodando em http://localhost:${port}`);
+});
