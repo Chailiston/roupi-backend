@@ -38,3 +38,51 @@ export async function register(req: Request, res: Response) {
 export async function login(req: Request, res: Response) {
   // ... seu código de login ...
 }
+
+// src/controllers/authController.ts
+import { Request, Response } from 'express';
+import bcrypt from 'bcrypt';
+import { pool } from '../database/connection';
+
+// … sua função register …
+
+export async function login(req: Request, res: Response) {
+  const { email, senha } = req.body;
+
+  // Validação básica
+  if (!email || !senha) {
+    return res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
+  }
+
+  console.log('🔑 LOGIN BODY:', req.body);
+
+  try {
+    // 1) Buscar loja pelo e-mail
+    const result = await pool.query(
+      `SELECT id, nome, senha_hash
+       FROM lojas
+       WHERE email = $1`,
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
+    }
+
+    const loja = result.rows[0];
+
+    // 2) Comparar a senha enviada com o hash
+    const match = await bcrypt.compare(senha, loja.senha_hash);
+    if (!match) {
+      return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
+    }
+
+    // 3) Tudo certo: retorna o ID e nome (ou token, se quiser)
+    return res.status(200).json({ id: loja.id, nome: loja.nome });
+
+  } catch (err: any) {
+    console.error('❌ LOGIN ERROR:', err);
+    return res.status(500).json({ error: 'Erro ao efetuar login', detail: err.message });
+  }
+}
+
