@@ -48,11 +48,6 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-// 4) Rota de debug (echo) — apenas para testes em produção
-app.post('/api/auth/echo', (req, res) => {
-  console.log('🔍 BODY ECHO:', req.body);
-  res.json({ youSent: req.body });
-});
 
 // 5) Rotas da API
 app.use('/api/auth', authRoutes);
