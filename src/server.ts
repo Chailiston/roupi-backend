@@ -48,7 +48,11 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-
+// teste de body parser
+app.post('/api/auth/test-body', (req, res) => {
+  console.log('BODY RECEBIDO:', req.body);
+  res.json({ received: req.body });
+});
 // 5) Rotas da API
 app.use('/api/auth', authRoutes);
 app.use('/api/lojas', lojaRoutes);
