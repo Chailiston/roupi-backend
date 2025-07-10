@@ -48,11 +48,13 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-// 4) Rotas da API
+// 4) Rota de debug (echo) — apenas para testes em produção
 app.post('/api/auth/echo', (req, res) => {
-  console.log('BODY ECHO:', req.body);
+  console.log('🔍 BODY ECHO:', req.body);
   res.json({ youSent: req.body });
 });
+
+// 5) Rotas da API
 app.use('/api/auth', authRoutes);
 app.use('/api/lojas', lojaRoutes);
 app.use('/api/produtos', produtoRoutes);
@@ -70,10 +72,10 @@ app.use('/api/admins', adminRoutes);
 app.use('/api/relatorios', relatorioRoutes);
 app.use('/api/upload', uploadRoutes);
 
-// 5) Servir uploads/imagens
+// 6) Servir uploads/imagens
 app.use('/uploads', express.static(path.resolve(__dirname, '..', 'uploads')));
 
-// 6) Inicia o servidor
+// 7) Inicia o servidor
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);
 });
