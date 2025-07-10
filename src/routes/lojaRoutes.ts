@@ -1,3 +1,4 @@
+// src/routes/lojaRoutes.ts
 import { Router } from 'express';
 import {
   getLojas,
@@ -19,7 +20,7 @@ router.get('/:id', getLojaById);
 // Criar loja
 router.post('/', createLoja);
 
-// Atualizar loja (inclui onboarded = true)
+// Atualizar loja (Onboarding + dados bancários)
 router.put('/:id', updateLoja);
 
 // Dados bancários da loja

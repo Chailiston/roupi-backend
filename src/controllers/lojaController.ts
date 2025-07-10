@@ -5,9 +5,7 @@ import { pool } from '../database/connection';
 // GET /api/lojas
 export const getLojas = async (req: Request, res: Response) => {
   try {
-    const { rows } = await pool.query(
-      'SELECT id, nome, onboarded FROM lojas'
-    );
+    const { rows } = await pool.query('SELECT id, nome, onboarded FROM lojas');
     return res.json(rows);
   } catch (error) {
     console.error('Erro ao buscar lojas:', error);
@@ -21,10 +19,16 @@ export const getLojaById = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { rows } = await pool.query(
       `SELECT id, nome, cnpj, email, telefone,
-              endereco_cep, endereco_rua, endereco_numero,
-              endereco_bairro, endereco_cidade, endereco_estado,
-              horario_funcionamento, onboarded
-       FROM lojas WHERE id = $1`,
+              endereco_cep AS cep,
+              endereco_rua AS rua,
+              endereco_numero AS numero,
+              endereco_bairro AS bairro,
+              endereco_cidade AS cidade,
+              endereco_estado AS estado,
+              horario_funcionamento,
+              onboarded
+       FROM lojas
+       WHERE id = $1`,
       [id]
     );
     if (rows.length === 0) {
@@ -41,71 +45,77 @@ export const getLojaById = async (req: Request, res: Response) => {
 export const createLoja = async (req: Request, res: Response) => {
   const {
     nome, cnpj, email, telefone,
-    endereco_rua, endereco_numero, endereco_bairro,
-    endereco_cidade, endereco_estado, endereco_cep,
+    endereco_cep, endereco_rua, endereco_numero,
+    endereco_bairro, endereco_cidade, endereco_estado,
     horario_funcionamento,
     banco, agencia, conta, tipo_conta
   } = req.body;
 
   try {
+    const horariosJson = typeof horario_funcionamento === 'object'
+      ? JSON.stringify(horario_funcionamento)
+      : horario_funcionamento;
+
     const lojaResult = await pool.query(
       `INSERT INTO lojas (
          nome, cnpj, email, telefone,
-         endereco_rua, endereco_numero, endereco_bairro,
-         endereco_cidade, endereco_estado, endereco_cep,
+         endereco_cep, endereco_rua, endereco_numero,
+         endereco_bairro, endereco_cidade, endereco_estado,
          horario_funcionamento, onboarded
        ) VALUES (
          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, FALSE
        ) RETURNING id, nome, onboarded`,
       [
         nome, cnpj, email, telefone,
-        endereco_rua, endereco_numero, endereco_bairro,
-        endereco_cidade, endereco_estado, endereco_cep,
-        horario_funcionamento
+        endereco_cep, endereco_rua, endereco_numero,
+        endereco_bairro, endereco_cidade, endereco_estado,
+        horariosJson
       ]
     );
     const loja = lojaResult.rows[0];
 
-    await pool.query(
-      `INSERT INTO dados_bancarios_loja (
-         id_loja, banco, agencia, conta, tipo_conta
-       ) VALUES ($1,$2,$3,$4,$5)`,
-      [loja.id, banco, agencia, conta, tipo_conta]
-    );
+    if (banco || agencia || conta || tipo_conta) {
+      await pool.query(
+        `INSERT INTO dados_bancarios_loja (
+           id_loja, banco, agencia, conta, tipo_conta
+         ) VALUES ($1,$2,$3,$4,$5)`,
+        [loja.id, banco, agencia, conta, tipo_conta]
+      );
+    }
 
     return res.status(201).json({ message: 'Loja criada com sucesso', loja });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao criar loja:', error);
-    return res.status(500).json({ error: 'Erro ao criar loja' });
+    if (error.code === '23505') {
+      const msg = error.detail.includes('email')
+        ? 'Este e-mail já está cadastrado.'
+        : error.detail.includes('cnpj')
+        ? 'Este CNPJ já está cadastrado.'
+        : 'Registro duplicado.';
+      return res.status(409).json({ error: msg });
+    }
+    return res.status(500).json({ error: 'Erro ao criar loja', detail: error.message });
   }
 };
 
 // PUT /api/lojas/:id
-// PUT /api/lojas/:id
 export const updateLoja = async (req: Request, res: Response) => {
   const { id } = req.params;
-  // Aceita campos sem prefixo endereco_
   const {
-    cep,
-    rua,
-    numero,
-    bairro,
-    cidade,
-    estado,
+    cep, rua, numero, bairro, cidade, estado,
     horario_funcionamento,
-    banco,
-    agencia,
-    conta,
-    tipo_conta
+    banco, agencia, conta, tipo_conta
   } = req.body;
 
-  // Validação básica de endereço
   if (!cep || !rua || !numero || !bairro || !cidade || !estado) {
     return res.status(400).json({ error: 'Preencha todos os campos de endereço.' });
   }
 
   try {
-    // Atualiza loja: mapeia para colunas com prefixo endereco_
+    const horariosJson = typeof horario_funcionamento === 'object'
+      ? JSON.stringify(horario_funcionamento)
+      : horario_funcionamento;
+
     await pool.query(
       `UPDATE lojas SET
          endereco_cep=$1,
@@ -117,19 +127,9 @@ export const updateLoja = async (req: Request, res: Response) => {
          horario_funcionamento=$7,
          onboarded=TRUE
        WHERE id=$8`,
-      [
-        cep,
-        rua,
-        numero,
-        bairro,
-        cidade,
-        estado,
-        horario_funcionamento,
-        id
-      ]
+      [cep, rua, numero, bairro, cidade, estado, horariosJson, id]
     );
 
-    // Atualiza ou insere dados bancários
     const banc = await pool.query(
       'SELECT id_loja FROM dados_bancarios_loja WHERE id_loja=$1',
       [id]
@@ -215,13 +215,7 @@ export const getPainelLoja = async (req: Request, res: Response) => {
       [id]
     );
 
-    return res.json({
-      loja,
-      totalPedidos,
-      mediaAvaliacao,
-      totalProdutos,
-      ultimosPedidos: ult.rows
-    });
+    return res.json({ loja, totalPedidos, mediaAvaliacao, totalProdutos, ultimosPedidos: ult.rows });
   } catch (error) {
     console.error('Erro ao carregar painel da loja:', error);
     return res.status(500).json({ error: 'Erro ao carregar painel' });
