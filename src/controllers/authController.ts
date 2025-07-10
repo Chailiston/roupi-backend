@@ -15,12 +15,13 @@ export async function register(req: Request, res: Response) {
   try {
     const hash = await bcrypt.hash(senha, 10);
     const result = await pool.query(
-      `INSERT INTO lojas (nome, cnpj, email, senha_hash, criado_em)
-       VALUES ($1, $2, $3, $4, NOW())
-       RETURNING id`,
+      `INSERT INTO lojas (nome, cnpj, email, senha_hash, onboarded, criado_em)
+       VALUES ($1, $2, $3, $4, FALSE, NOW())
+       RETURNING id, onboarded`,
       [nome, cnpj, email, hash]
     );
-    return res.status(201).json({ id: result.rows[0].id });
+    const loja = result.rows[0];
+    return res.status(201).json({ id: loja.id, onboarded: loja.onboarded });
 
   } catch (err: any) {
     console.error('❌ REGISTER ERROR:', err);
@@ -42,7 +43,7 @@ export async function login(req: Request, res: Response) {
 
   try {
     const result = await pool.query(
-      `SELECT id, nome, senha_hash
+      `SELECT id, nome, senha_hash, onboarded
        FROM lojas
        WHERE email = $1`,
       [email]
@@ -58,7 +59,7 @@ export async function login(req: Request, res: Response) {
       return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
     }
 
-    return res.status(200).json({ id: loja.id, nome: loja.nome });
+    return res.status(200).json({ id: loja.id, nome: loja.nome, onboarded: loja.onboarded });
 
   } catch (err: any) {
     console.error('❌ LOGIN ERROR:', err);
