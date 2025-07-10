@@ -46,11 +46,12 @@ app.get('/api/test-db', async (req, res) => {
         res.status(500).json({ error: 'Erro ao consultar o banco' });
     }
 });
-// 4) Rotas da API
-app.post('/api/auth/echo', (req, res) => {
-    console.log('BODY ECHO:', req.body);
-    res.json({ youSent: req.body });
+// teste de body parser
+app.post('/api/auth/test-body', (req, res) => {
+    console.log('BODY RECEBIDO:', req.body);
+    res.json({ received: req.body });
 });
+// 5) Rotas da API
 app.use('/api/auth', authRoutes_1.default);
 app.use('/api/lojas', lojaRoutes_1.default);
 app.use('/api/produtos', produtoRoutes_1.default);
@@ -67,9 +68,9 @@ app.use('/api/chamados', chamadoRoutes_1.default);
 app.use('/api/admins', adminRoutes_1.default);
 app.use('/api/relatorios', relatorioRoutes_1.default);
 app.use('/api/upload', uploadRoutes_1.default);
-// 5) Servir uploads/imagens
+// 6) Servir uploads/imagens
 app.use('/uploads', express_1.default.static(path_1.default.resolve(__dirname, '..', 'uploads')));
-// 6) Inicia o servidor
+// 7) Inicia o servidor
 app.listen(port, () => {
     console.log(`Servidor rodando em http://localhost:${port}`);
 });
