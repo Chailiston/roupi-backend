@@ -1,3 +1,4 @@
+// src/server.ts
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -26,9 +27,14 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
+// 1) Habilita CORS
 app.use(cors());
-app.use(express.json()); // precisa vir antes das rotas
 
+// 2) Parser de JSON e URL-encoded (body) — precisa vir antes das rotas
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 3) Rotas de teste
 app.get('/', (req, res) => {
   res.send('🚀 Backend ROUPPI rodando com sucesso!');
 });
@@ -42,7 +48,12 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-// Rotas da API
+// 4) Rotas da API
+app.post('/api/auth/echo', (req, res) => {
+  console.log('BODY ECHO:', req.body);
+  res.json({ youSent: req.body });
+});
+app.use('/api/auth', authRoutes);
 app.use('/api/lojas', lojaRoutes);
 app.use('/api/produtos', produtoRoutes);
 app.use('/api/variacoes', variacaoProdutoRoutes);
@@ -57,12 +68,12 @@ app.use('/api/notificacoes', notificacaoRoutes);
 app.use('/api/chamados', chamadoRoutes);
 app.use('/api/admins', adminRoutes);
 app.use('/api/relatorios', relatorioRoutes);
-app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
 
-// Servir imagens
+// 5) Servir uploads/imagens
 app.use('/uploads', express.static(path.resolve(__dirname, '..', 'uploads')));
 
+// 6) Inicia o servidor
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);
 });

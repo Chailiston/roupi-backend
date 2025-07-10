@@ -1,35 +1,34 @@
 import { Request, Response } from 'express';
-import { pool } from '../database/connection';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import { pool } from '../database/connection';
 
-export const loginAdmin = async (req: Request, res: Response) => {
-  const { email, senha } = req.body;
-
+export async function register(req: Request, res: Response) {
+  const { nome, cnpj, email, senha } = req.body;
   try {
-    const result = await pool.query('SELECT * FROM admins WHERE email = $1 AND ativo = true', [email]);
-    const admin = result.rows[0];
-
-    if (!admin) {
-      return res.status(401).json({ error: 'E-mail não encontrado ou usuário inativo' });
-    }
-
-const senhaCorreta = senha === admin.senha_hash;
-
-
-    if (!senhaCorreta) {
-      return res.status(401).json({ error: 'Senha incorreta' });
-    }
-
-    const token = jwt.sign(
-      { id: admin.id, email: admin.email, perfil: admin.perfil },
-      process.env.JWT_SECRET || 'roupi_secret',
-      { expiresIn: '8h' }
+    const hash = await bcrypt.hash(senha, 10);
+    const result = await pool.query(
+      `INSERT INTO lojas (nome, cnpj, email, senha_hash, criado_em)
+       VALUES ($1,$2,$3,$4,NOW()) RETURNING id`,
+      [nome, cnpj, email, hash]
     );
+    res.status(201).json({ id: result.rows[0].id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao cadastrar loja' });
+  }
+}
 
-    res.json({ token, admin: { id: admin.id, nome: admin.nome, email: admin.email, perfil: admin.perfil } });
-  } catch (error) {
-    console.error('Erro no login:', error);
+export async function login(req: Request, res: Response) {
+  const { email, senha } = req.body;
+  try {
+    const { rows } = await pool.query(`SELECT * FROM lojas WHERE email = $1`, [email]);
+    if (!rows.length) return res.status(404).json({ error: 'Loja não encontrada' });
+    const loja = rows[0];
+    const match = await bcrypt.compare(senha, loja.senha_hash);
+    if (!match) return res.status(401).json({ error: 'Senha incorreta' });
+    res.json({ id: loja.id, nome: loja.nome });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Erro no login' });
   }
-};
+}
