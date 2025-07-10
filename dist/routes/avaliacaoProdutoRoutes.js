@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const avaliacaoProdutoController_1 = require("../controllers/avaliacaoProdutoController");
+const router = (0, express_1.Router)();
+router.get('/avaliacoes', avaliacaoProdutoController_1.getAvaliacoes);
+router.get('/produtos/:id/avaliacoes', avaliacaoProdutoController_1.getAvaliacoesPorProduto);
+router.post('/avaliacoes', avaliacaoProdutoController_1.createAvaliacao);
+router.delete('/avaliacoes/:id', avaliacaoProdutoController_1.deleteAvaliacao);
+exports.default = router;

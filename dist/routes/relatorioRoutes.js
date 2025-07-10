@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const relatorioController_1 = require("../controllers/relatorioController");
+const router = (0, express_1.Router)();
+router.get('/vendas-por-loja', relatorioController_1.vendasPorLoja);
+router.get('/produtos-mais-vendidos', relatorioController_1.produtosMaisVendidos);
+router.get('/faturamento-mensal', relatorioController_1.faturamentoMensal);
+router.get('/clientes-ativos', relatorioController_1.clientesAtivos);
+exports.default = router;
