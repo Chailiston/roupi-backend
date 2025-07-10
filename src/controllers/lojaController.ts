@@ -1,10 +1,13 @@
+// src/controllers/lojaController.ts
 import { Request, Response } from 'express';
 import { pool } from '../database/connection';
 
 // GET /api/lojas
 export const getLojas = async (req: Request, res: Response) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM lojas');
+    const { rows } = await pool.query(
+      'SELECT id, nome, onboarded FROM lojas'
+    );
     return res.json(rows);
   } catch (error) {
     console.error('Erro ao buscar lojas:', error);
@@ -17,7 +20,11 @@ export const getLojaById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { rows } = await pool.query(
-      'SELECT * FROM lojas WHERE id = $1',
+      `SELECT id, nome, cnpj, email, telefone,
+              endereco_cep, endereco_rua, endereco_numero,
+              endereco_bairro, endereco_cidade, endereco_estado,
+              horario_funcionamento, onboarded
+       FROM lojas WHERE id = $1`,
       [id]
     );
     if (rows.length === 0) {
@@ -46,10 +53,10 @@ export const createLoja = async (req: Request, res: Response) => {
          nome, cnpj, email, telefone,
          endereco_rua, endereco_numero, endereco_bairro,
          endereco_cidade, endereco_estado, endereco_cep,
-         horario_funcionamento
+         horario_funcionamento, onboarded
        ) VALUES (
-         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
-       ) RETURNING *`,
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, FALSE
+       ) RETURNING id, nome, onboarded`,
       [
         nome, cnpj, email, telefone,
         endereco_rua, endereco_numero, endereco_bairro,
@@ -74,34 +81,57 @@ export const createLoja = async (req: Request, res: Response) => {
 };
 
 // PUT /api/lojas/:id
+// PUT /api/lojas/:id
 export const updateLoja = async (req: Request, res: Response) => {
   const { id } = req.params;
+  // Aceita campos sem prefixo endereco_
   const {
-    nome, cnpj, email, telefone,
-    endereco_rua, endereco_numero, endereco_bairro,
-    endereco_cidade, endereco_estado, endereco_cep,
+    cep,
+    rua,
+    numero,
+    bairro,
+    cidade,
+    estado,
     horario_funcionamento,
-    banco, agencia, conta, tipo_conta
+    banco,
+    agencia,
+    conta,
+    tipo_conta
   } = req.body;
 
+  // Validação básica de endereço
+  if (!cep || !rua || !numero || !bairro || !cidade || !estado) {
+    return res.status(400).json({ error: 'Preencha todos os campos de endereço.' });
+  }
+
   try {
+    // Atualiza loja: mapeia para colunas com prefixo endereco_
     await pool.query(
       `UPDATE lojas SET
-         nome=$1, cnpj=$2, email=$3, telefone=$4,
-         endereco_rua=$5, endereco_numero=$6, endereco_bairro=$7,
-         endereco_cidade=$8, endereco_estado=$9, endereco_cep=$10,
-         horario_funcionamento=$11
-       WHERE id=$12`,
+         endereco_cep=$1,
+         endereco_rua=$2,
+         endereco_numero=$3,
+         endereco_bairro=$4,
+         endereco_cidade=$5,
+         endereco_estado=$6,
+         horario_funcionamento=$7,
+         onboarded=TRUE
+       WHERE id=$8`,
       [
-        nome, cnpj, email, telefone,
-        endereco_rua, endereco_numero, endereco_bairro,
-        endereco_cidade, endereco_estado, endereco_cep,
-        horario_funcionamento, id
+        cep,
+        rua,
+        numero,
+        bairro,
+        cidade,
+        estado,
+        horario_funcionamento,
+        id
       ]
     );
 
+    // Atualiza ou insere dados bancários
     const banc = await pool.query(
-      'SELECT id FROM dados_bancarios_loja WHERE id_loja=$1',
+      'SELECT id_loja FROM dados_bancarios_loja WHERE id_loja=$1',
       [id]
     );
     if (banc.rowCount) {
@@ -121,9 +151,9 @@ export const updateLoja = async (req: Request, res: Response) => {
     }
 
     return res.json({ message: 'Loja e dados bancários atualizados com sucesso' });
-  } catch (error) {
-    console.error('Erro ao atualizar loja:', error);
-    return res.status(500).json({ error: 'Erro ao atualizar loja' });
+  } catch (err: any) {
+    console.error('❌ UPDATE LOJA ERROR:', err);
+    return res.status(500).json({ error: 'Erro ao atualizar loja', detail: err.message });
   }
 };
 

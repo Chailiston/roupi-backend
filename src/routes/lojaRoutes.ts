@@ -13,13 +13,13 @@ const router = Router();
 // Listar todas as lojas
 router.get('/', getLojas);
 
-// Buscar loja por ID → **esse agora funciona**
+// Buscar loja por ID
 router.get('/:id', getLojaById);
 
 // Criar loja
 router.post('/', createLoja);
 
-// Atualizar loja
+// Atualizar loja (inclui onboarded = true)
 router.put('/:id', updateLoja);
 
 // Dados bancários da loja
