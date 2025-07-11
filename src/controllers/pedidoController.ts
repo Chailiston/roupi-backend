@@ -2,6 +2,24 @@
 
 import { Request, Response } from 'express';
 import { pool } from '../database/connection';
+// GET /api/lojas/:lojaId/pedidos
+export const getPedidosByLoja = async (req: Request, res: Response) => {
+  try {
+    const { lojaId } = req.params;
+    const result = await pool.query(
+      `SELECT 
+         id, id_cliente, status, forma_pagamento, valor_total, observacoes, criado_em
+       FROM pedidos
+       WHERE id_loja = $1
+       ORDER BY criado_em DESC`,
+      [lojaId]
+    );
+    return res.json(result.rows);
+  } catch (err: any) {
+    console.error('Erro ao buscar pedidos da loja:', err);
+    return res.status(500).json({ error: 'Erro interno' });
+  }
+};
 
 // GET /api/lojas/:lojaId/pedidos/:pedidoId
 export const getPedidoById = async (req: Request, res: Response) => {
