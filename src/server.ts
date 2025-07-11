@@ -8,6 +8,7 @@ import { pool } from './database/connection';
 import authRoutes from './routes/authRoutes';
 import lojaRoutes from './routes/lojaRoutes';
 import produtoRoutes from './routes/produtoRoutes';
+import produtoImagemRoutes from './routes/produtoImagemRoutes';   // ← nova importação
 import variacaoProdutoRoutes from './routes/variacaoProdutoRoutes';
 import clienteRoutes from './routes/clienteRoutes';
 import enderecoClienteRoutes from './routes/enderecoClienteRoutes';
@@ -50,8 +51,14 @@ app.post('/api/auth/test-body', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/lojas', lojaRoutes);
 
-// Produtos agora dentro do contexto de loja
+// Produtos no contexto de loja
 app.use('/api/lojas/:lojaId/produtos', produtoRoutes);
+
+// Imagens de produto
+app.use(
+  '/api/lojas/:lojaId/produtos/:produtoId/imagens',
+  produtoImagemRoutes
+);
 
 // Pedidos de loja (GET / PUT status)
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes);
