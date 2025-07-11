@@ -30,7 +30,7 @@ const port = process.env.PORT || 3001;
 // 1) Habilita CORS
 app.use(cors());
 
-// 2) Parser de JSON e URL-encoded (body) — precisa vir antes das rotas
+// 2) Parser de JSON e URL-encoded — precisa vir antes das rotas
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -48,20 +48,28 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-// teste de body parser
 app.post('/api/auth/test-body', (req, res) => {
   console.log('BODY RECEBIDO:', req.body);
   res.json({ received: req.body });
 });
-// 5) Rotas da API
+
+// 4) Rotas da API
 app.use('/api/auth', authRoutes);
 app.use('/api/lojas', lojaRoutes);
+
+// **Nova montagem**: pedidos de uma loja
+// vai expor GET /api/lojas/:lojaId/pedidos/:pedidoId
+app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes);
+
 app.use('/api/produtos', produtoRoutes);
 app.use('/api/variacoes', variacaoProdutoRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/enderecos', enderecoClienteRoutes);
-app.use('/api/pedidos', pedidoRoutes);
+
+// **Removido**: não usamos mais app.use('/api/pedidos', pedidoRoutes);
+// itemPedido continua independente:
 app.use('/api/itens-pedido', itemPedidoRoutes);
+
 app.use('/api/avaliacoes-produto', avaliacaoProdutoRoutes);
 app.use('/api/favoritos', favoritoRoutes);
 app.use('/api/avaliacoes-loja', avaliacaoLojaRoutes);
@@ -71,10 +79,10 @@ app.use('/api/admins', adminRoutes);
 app.use('/api/relatorios', relatorioRoutes);
 app.use('/api/upload', uploadRoutes);
 
-// 6) Servir uploads/imagens
+// 5) Servir uploads/imagens
 app.use('/uploads', express.static(path.resolve(__dirname, '..', 'uploads')));
 
-// 7) Inicia o servidor
+// 6) Inicia o servidor
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);
 });

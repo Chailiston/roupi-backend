@@ -1,18 +1,11 @@
+// src/routes/pedidoRoutes.ts
 import { Router } from 'express';
-import {
-  getPedidos,
-  getPedidoById,
-  getPedidosPorCliente,
-  createPedido,
-  updateStatusPedido
-} from '../controllers/pedidoController';
+import { getPedidoById } from '../controllers/pedidoController';
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
-router.get('/pedidos', getPedidos);
-router.get('/pedidos/:id', getPedidoById);
-router.get('/clientes/:id/pedidos', getPedidosPorCliente);
-router.post('/pedidos', createPedido);
-router.put('/pedidos/:id', updateStatusPedido);
+// Como o router já está “montado” em /api/lojas/:lojaId/pedidos,
+// aqui só precisamos da parte dinâmica após isso:
+router.get('/:pedidoId', getPedidoById);
 
 export default router;
