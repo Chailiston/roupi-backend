@@ -1,4 +1,5 @@
 // src/controllers/pedidoController.ts
+
 import { Request, Response } from 'express';
 import { pool } from '../database/connection';
 
@@ -7,7 +8,6 @@ export const getPedidoById = async (req: Request, res: Response) => {
   try {
     const { lojaId, pedidoId } = req.params;
 
-    // Agora usamos lojaId (não `id`)
     const pedidoRes = await pool.query(
       `SELECT 
          id, 
@@ -22,7 +22,6 @@ export const getPedidoById = async (req: Request, res: Response) => {
          AND id = $2`,
       [lojaId, pedidoId]
     );
-
     if (pedidoRes.rowCount === 0) {
       return res.status(404).json({ error: 'Pedido não encontrado' });
     }
@@ -56,5 +55,35 @@ export const getPedidoById = async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('Erro ao buscar pedido:', err);
     return res.status(500).json({ error: 'Erro interno' });
+  }
+};
+
+// PUT /api/lojas/:lojaId/pedidos/:pedidoId/status
+export const updatePedidoStatus = async (req: Request, res: Response) => {
+  try {
+    const { lojaId, pedidoId } = req.params;
+    const { status } = req.body;
+
+    const result = await pool.query(
+      `UPDATE pedidos
+         SET status = $1
+       WHERE id_loja = $2 
+         AND id = $3
+       RETURNING status`,
+      [status, lojaId, pedidoId]
+    );
+
+    if (result.rowCount === 0) {
+      return res
+        .status(404)
+        .json({ error: 'Pedido não encontrado ou não pertence à loja' });
+    }
+
+    return res.json({ status: result.rows[0].status });
+  } catch (err: any) {
+    console.error('Erro ao atualizar status do pedido:', err);
+    return res
+      .status(500)
+      .json({ error: 'Erro interno ao atualizar status' });
   }
 };
