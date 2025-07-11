@@ -1,20 +1,13 @@
 import { Router } from 'express';
-import {
-  getProdutos,
-  getProdutoById,
-  getProdutosByLoja,
-  createProduto,
-  updateProduto,
-  deleteProduto
-} from '../controllers/produtoController';
+import { getProdutosByLoja, createProduto, updateProduto } from '../controllers/produtoController';
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
-router.get('/', getProdutos);
-router.get('/:id', getProdutoById);
-router.get('/loja/:id', getProdutosByLoja); // Corrigido para evitar conflito com /:id
+// Listar produtos da loja
+router.get('/', getProdutosByLoja);
+// Criar novo produto
 router.post('/', createProduto);
-router.put('/:id', updateProduto);
-router.delete('/:id', deleteProduto);
+// Atualizar produto existente
+router.put('/:produtoId', updateProduto);
 
 export default router;

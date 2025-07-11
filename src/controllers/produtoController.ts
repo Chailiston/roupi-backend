@@ -1,58 +1,65 @@
+// src/controllers/produtoController.ts
 import { Request, Response } from 'express';
 import { pool } from '../database/connection';
 
-// Listar todos os produtos
-export const getProdutos = async (req: Request, res: Response) => {
-  const result = await pool.query('SELECT * FROM produtos WHERE ativo = true ORDER BY id DESC');
-  res.json(result.rows);
-};
-
-// Buscar produto por ID
-export const getProdutoById = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const result = await pool.query('SELECT * FROM produtos WHERE id = $1', [id]);
-  res.json(result.rows[0]);
-};
-
-// Listar produtos por loja
+// GET /api/lojas/:lojaId/produtos
 export const getProdutosByLoja = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const result = await pool.query('SELECT * FROM produtos WHERE loja_id = $1 AND ativo = true ORDER BY id DESC', [id]);
-  res.json(result.rows);
+  try {
+    const { lojaId } = req.params;
+    const { rows } = await pool.query(
+      'SELECT id, nome, descricao, categoria, preco_base, imagem_url, ativo, criado_em FROM produtos WHERE id_loja = $1 ORDER BY criado_em DESC',
+      [lojaId]
+    );
+    res.json(rows);
+  } catch (err: any) {
+    console.error('Erro ao listar produtos:', err);
+    res.status(500).json({ error: 'Erro interno ao listar produtos' });
+  }
 };
 
-// Criar produto
+// POST /api/lojas/:lojaId/produtos
 export const createProduto = async (req: Request, res: Response) => {
-  const { loja_id, nome, descricao, preco, categoria, destaque } = req.body;
-
-  const result = await pool.query(
-    `INSERT INTO produtos (loja_id, nome, descricao, preco, categoria, destaque)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [loja_id, nome, descricao, preco, categoria, destaque]
-  );
-
-  res.status(201).json(result.rows[0]);
+  try {
+    const { lojaId } = req.params;
+    const { nome, descricao, categoria, preco_base, ativo } = req.body;
+    const imagemUrl = req.body.imagem_url || null;
+    const result = await pool.query(
+      `INSERT INTO produtos (id_loja, nome, descricao, categoria, preco_base, imagem_url, ativo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       RETURNING *`,
+      [lojaId, nome, descricao, categoria, preco_base, imagemUrl, ativo]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err: any) {
+    console.error('Erro ao criar produto:', err);
+    res.status(500).json({ error: 'Erro interno ao criar produto' });
+  }
 };
 
-// Atualizar produto
+// PUT /api/lojas/:lojaId/produtos/:produtoId
 export const updateProduto = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { nome, descricao, preco, categoria, destaque } = req.body;
-
-  const result = await pool.query(
-    `UPDATE produtos SET nome = $1, descricao = $2, preco = $3, categoria = $4, destaque = $5
-     WHERE id = $6 RETURNING *`,
-    [nome, descricao, preco, categoria, destaque, id]
-  );
-
-  res.json(result.rows[0]);
-};
-
-// Desativar produto (soft delete)
-export const deleteProduto = async (req: Request, res: Response) => {
-  const { id } = req.params;
-
-  await pool.query(`UPDATE produtos SET ativo = false WHERE id = $1`, [id]);
-
-  res.json({ message: 'Produto desativado com sucesso.' });
+  try {
+    const { lojaId, produtoId } = req.params;
+    const { nome, descricao, categoria, preco_base, ativo } = req.body;
+    const imagemUrl = req.body.imagem_url || null;
+    const result = await pool.query(
+      `UPDATE produtos SET
+         nome = $1,
+         descricao = $2,
+         categoria = $3,
+         preco_base = $4,
+         imagem_url = $5,
+         ativo = $6
+       WHERE id_loja = $7 AND id = $8
+       RETURNING *`,
+      [nome, descricao, categoria, preco_base, imagemUrl, ativo, lojaId, produtoId]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Produto não encontrado' });
+    }
+    res.json(result.rows[0]);
+  } catch (err: any) {
+    console.error('Erro ao atualizar produto:', err);
+    res.status(500).json({ error: 'Erro interno ao atualizar produto' });
+  }
 };

@@ -50,10 +50,12 @@ app.post('/api/auth/test-body', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/lojas', lojaRoutes);
 
-// **Pedido de loja** (GET e PUT status)
+// Produtos agora dentro do contexto de loja
+app.use('/api/lojas/:lojaId/produtos', produtoRoutes);
+
+// Pedidos de loja (GET / PUT status)
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes);
 
-app.use('/api/produtos', produtoRoutes);
 app.use('/api/variacoes', variacaoProdutoRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/enderecos', enderecoClienteRoutes);
