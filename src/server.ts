@@ -22,15 +22,13 @@ import chamadoRoutes from './routes/chamadoRoutes';
 import adminRoutes from './routes/adminRoutes';
 import relatorioRoutes from './routes/relatorioRoutes';
 import uploadRoutes from './routes/uploadRoutes';
-
-// ← nova importação das rotas de promoções
 import promocoesRoutes from './routes/promocoes';
 
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
-// 1) Habilita CORS e body parser
+// 1) CORS e body parser
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -53,19 +51,9 @@ app.post('/api/auth/test-body', (req, res) => {
 // 3) Rotas da API
 app.use('/api/auth', authRoutes);
 app.use('/api/lojas', lojaRoutes);
-
-// Produtos no contexto de loja
 app.use('/api/lojas/:lojaId/produtos', produtoRoutes);
-
-// Imagens de produto
-app.use(
-  '/api/lojas/:lojaId/produtos/:produtoId/imagens',
-  produtoImagemRoutes
-);
-
-// Pedidos de loja (GET / PUT status)
+app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens', produtoImagemRoutes);
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes);
-
 app.use('/api/variacoes', variacaoProdutoRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/enderecos', enderecoClienteRoutes);
@@ -78,14 +66,12 @@ app.use('/api/chamados', chamadoRoutes);
 app.use('/api/admins', adminRoutes);
 app.use('/api/relatorios', relatorioRoutes);
 app.use('/api/upload', uploadRoutes);
-
-// → Nova rota para Promoções & Combos
 app.use('/api/promocoes', promocoesRoutes);
 
-// 4) Servir arquivos estáticos de upload
+// 4) Uploads estáticos
 app.use('/uploads', express.static(path.resolve(__dirname, '..', 'uploads')));
 
-// 5) Inicia o servidor
+// 5) Inicia servidor
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`);
 });
