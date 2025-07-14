@@ -1,3 +1,4 @@
+// src/controllers/relatorioController.ts
 import { Request, Response } from 'express';
 import { pool } from '../database/connection';
 
@@ -51,7 +52,7 @@ export const getKpis = async (_req: Request, res: Response): Promise<void> => {
 export const getSalesByDay = async (req: Request, res: Response): Promise<void> => {
   try {
     const start = req.query.start as string;
-    const end   = req.query.end   as string;
+    const end = req.query.end as string;
     const { rows } = await pool.query(
       `SELECT
          TO_CHAR(DATE(criado_em),'YYYY-MM-DD') AS dia,
@@ -67,5 +68,30 @@ export const getSalesByDay = async (req: Request, res: Response): Promise<void> 
   } catch (err: any) {
     console.error('Erro ao obter vendas por dia:', err);
     res.status(500).json({ error: 'Erro interno ao obter vendas por dia' });
+  }
+};
+
+// GET /api/relatorios/produtos-mais-vendidos?start=ISO&end=ISO
+export const getTopProducts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const start = req.query.start as string;
+    const end = req.query.end as string;
+    const { rows } = await pool.query(
+      `SELECT p.nome,
+              SUM(i.quantidade)::bigint AS quantidade
+       FROM itens_pedido i
+       JOIN pedidos ped ON ped.id = i.id_pedido
+       JOIN produtos p ON p.id = i.id_produto
+       WHERE ped.criado_em BETWEEN $1 AND $2
+       GROUP BY p.nome
+       ORDER BY quantidade DESC
+       LIMIT 10`,
+      [start, end]
+    );
+    const result = rows.map(r => ({ nome: r.nome, quantidade: parseInt(r.quantidade, 10) }));
+    res.json(result);
+  } catch (err: any) {
+    console.error('Erro ao obter produtos mais vendidos:', err);
+    res.status(500).json({ error: 'Erro interno ao obter produtos mais vendidos' });
   }
 };
