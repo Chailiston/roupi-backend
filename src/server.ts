@@ -8,7 +8,7 @@ import { pool } from './database/connection';
 import authRoutes from './routes/authRoutes';
 import lojaRoutes from './routes/lojaRoutes';
 import produtoRoutes from './routes/produtoRoutes';
-import produtoImagemRoutes from './routes/produtoImagemRoutes';   // ← nova importação
+import produtoImagemRoutes from './routes/produtoImagemRoutes';
 import variacaoProdutoRoutes from './routes/variacaoProdutoRoutes';
 import clienteRoutes from './routes/clienteRoutes';
 import enderecoClienteRoutes from './routes/enderecoClienteRoutes';
@@ -22,6 +22,9 @@ import chamadoRoutes from './routes/chamadoRoutes';
 import adminRoutes from './routes/adminRoutes';
 import relatorioRoutes from './routes/relatorioRoutes';
 import uploadRoutes from './routes/uploadRoutes';
+
+// ← nova importação das rotas de promoções
+import promocoesRoutes from './routes/promocoes';
 
 dotenv.config();
 const app = express();
@@ -75,6 +78,9 @@ app.use('/api/chamados', chamadoRoutes);
 app.use('/api/admins', adminRoutes);
 app.use('/api/relatorios', relatorioRoutes);
 app.use('/api/upload', uploadRoutes);
+
+// → Nova rota para Promoções & Combos
+app.use('/api/promocoes', promocoesRoutes);
 
 // 4) Servir arquivos estáticos de upload
 app.use('/uploads', express.static(path.resolve(__dirname, '..', 'uploads')));
