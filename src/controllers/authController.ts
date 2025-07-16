@@ -1,18 +1,27 @@
+// src/controllers/authController.ts
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import { pool } from '../database/connection';
 
-// cria o transporter do nodemailer usando SMTP Gmail
+// helper: gera string aleatória segura
+function generateTempPassword(length = 12): string {
+  return crypto.randomBytes(length * 2)
+    .toString('base64')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .slice(0, length);
+}
+
+// configura o transporter do Nodemailer usando variáveis de ambiente
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT),
   secure: false,
   auth: {
     user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
+    pass: process.env.SMTP_PASS,
+  },
 });
 
 // POST /api/auth/register
@@ -44,7 +53,7 @@ export async function register(req: Request, res: Response) {
 export async function login(req: Request, res: Response) {
   const { email, senha } = req.body;
   if (!email || !senha) {
-    return res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
+    return res.status(400).json({ error: 'E‑mail e senha são obrigatórios.' });
   }
   try {
     const result = await pool.query(
@@ -54,12 +63,12 @@ export async function login(req: Request, res: Response) {
       [email]
     );
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
+      return res.status(401).json({ error: 'E‑mail ou senha inválidos.' });
     }
     const loja = result.rows[0];
     const match = await bcrypt.compare(senha, loja.senha_hash);
     if (!match) {
-      return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
+      return res.status(401).json({ error: 'E‑mail ou senha inválidos.' });
     }
     return res.status(200).json({ id: loja.id, nome: loja.nome, onboarded: loja.onboarded });
   } catch (err: any) {
@@ -72,107 +81,34 @@ export async function login(req: Request, res: Response) {
 export async function forgotPassword(req: Request, res: Response) {
   const { email } = req.body;
   if (!email) {
-    return res.status(400).json({ error: 'E-mail obrigatório.' });
+    return res.status(400).json({ error: 'E‑mail obrigatório.' });
   }
   try {
-    const { rows } = await pool.query(
-      'SELECT id FROM lojas WHERE email = $1',
-      [email]
-    );
+    // 1) busca loja pelo email
+    const { rows } = await pool.query('SELECT id, nome FROM lojas WHERE email = $1', [email]);
     if (rows.length === 0) {
-      return res.status(404).json({ error: 'E‑mail não cadastrado' });
+      return res.status(404).json({ error: 'E‑mail não cadastrado.' });
     }
+    const { id: lojaId, nome } = rows[0];
 
-    const lojaId = rows[0].id;
-    const token = crypto.randomBytes(32).toString('hex');
-    const expires = new Date(Date.now() + 30 * 60000); // 30 minutos
+    // 2) gera senha temporária e seu hash
+    const tempPwd = generateTempPassword(12);
+    const hash = await bcrypt.hash(tempPwd, 10);
 
-    await pool.query(
-      `INSERT INTO password_reset_tokens
-       (id_loja, token, expires_at, criado_em, usado)
-       VALUES ($1, $2, $3, NOW(), FALSE)`,
-      [lojaId, token, expires]
-    );
+    // 3) atualiza direto no banco
+    await pool.query('UPDATE lojas SET senha_hash = $1 WHERE id = $2', [hash, lojaId]);
 
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-
-    // envia e‑mail com o link de redefinição
+    // 4) dispara e‑mail com a senha temporária
     await transporter.sendMail({
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: 'Redefinição de senha – Rouppi App',
-      html: `
-        <p>Olá,</p>
-        <p>Clique no link abaixo para redefinir sua senha (válido por 30 minutos):</p>
-        <a href="${resetLink}">${resetLink}</a>
-        <p>Ou copie e cole este token no app:</p>
-        <pre>${token}</pre>
-      `
+      subject: 'Sua nova senha — Rouppi App',
+      text: `Olá ${nome},\n\nSua senha foi resetada. Use esta senha temporária para entrar:\n\n${tempPwd}\n\nPor favor, altere-a em seu perfil assim que possível.\n\n— Equipe Rouppi`
     });
 
-    console.log(`>>> [forgotPassword] token gerado para loja ${lojaId}:`, token);
-    // Em DEV, retornamos o token para facilitar testes
-    return res.json({
-      message: 'Verifique seu e‑mail para redefinir a senha',
-      token
-    });
+    return res.json({ message: 'Uma nova senha foi enviada para seu e‑mail.' });
   } catch (err: any) {
     console.error('❌ FORGOT-PASSWORD ERROR:', err);
-    return res.status(500).json({
-      error: 'Erro ao solicitar redefinição de senha',
-      detail: err.message
-    });
-  }
-}
-
-// POST /api/auth/reset-password
-export async function resetPassword(req: Request, res: Response) {
-  const { token: rawToken, senha } = req.body;
-  console.log('>>> [resetPassword] rawToken:', JSON.stringify(rawToken));
-  const token = String(rawToken).trim();
-  console.log('>>> [resetPassword] token (trimmed):', token);
-
-  if (!token || !senha) {
-    return res.status(400).json({ error: 'Token e nova senha são obrigatórios.' });
-  }
-  try {
-    const { rows } = await pool.query(
-      `SELECT id_loja FROM password_reset_tokens
-       WHERE token = $1
-         AND expires_at > NOW()
-         AND usado = FALSE`,
-      [token]
-    );
-    console.log('>>> [resetPassword] lookup rows:', rows);
-
-    if (rows.length === 0) {
-      return res.status(400).json({ error: 'Token inválido ou expirado' });
-    }
-
-    const lojaId = rows[0].id_loja;
-    // exige extensão pgcrypto: CREATE EXTENSION IF NOT EXISTS pgcrypto;
-    await pool.query(
-      `UPDATE lojas
-         SET senha_hash = crypt($1, gen_salt('bf', 8))
-       WHERE id = $2`,
-      [senha, lojaId]
-    );
-    console.log(`>>> [resetPassword] senha_hash atualizada para loja ${lojaId}`);
-
-    await pool.query(
-      `UPDATE password_reset_tokens
-         SET usado = TRUE
-       WHERE token = $1`,
-      [token]
-    );
-    console.log(`>>> [resetPassword] token marcado como usado`);
-
-    return res.json({ message: 'Senha alterada com sucesso' });
-  } catch (err: any) {
-    console.error('❌ RESET-PASSWORD ERROR:', err);
-    return res.status(500).json({
-      error: 'Erro ao redefinir senha',
-      detail: err.message
-    });
+    return res.status(500).json({ error: 'Erro ao resetar senha', detail: err.message });
   }
 }
