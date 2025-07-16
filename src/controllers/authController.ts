@@ -13,7 +13,7 @@ function generateTempPassword(length = 12): string {
     .slice(0, length);
 }
 
-// configura o transporter do Nodemailer usando variáveis de ambiente
+// configurando Nodemailer
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT),
@@ -34,8 +34,7 @@ export async function register(req: Request, res: Response) {
     const hash = await bcrypt.hash(senha, 10);
     const result = await pool.query(
       `INSERT INTO lojas (nome, cnpj, email, senha_hash, onboarded, criado_em)
-       VALUES ($1, $2, $3, $4, FALSE, NOW())
-       RETURNING id, onboarded`,
+       VALUES ($1,$2,$3,$4,FALSE,NOW()) RETURNING id, onboarded`,
       [nome, cnpj, email, hash]
     );
     const loja = result.rows[0];
@@ -43,7 +42,7 @@ export async function register(req: Request, res: Response) {
   } catch (err: any) {
     console.error('❌ REGISTER ERROR:', err);
     if (err.code === '23505') {
-      return res.status(409).json({ error: 'Este CNPJ já está cadastrado.' });
+      return res.status(409).json({ error: 'Este CNPJ ou E‑mail já está cadastrado.' });
     }
     return res.status(500).json({ error: 'Erro ao cadastrar loja', detail: err.message });
   }
@@ -57,9 +56,7 @@ export async function login(req: Request, res: Response) {
   }
   try {
     const result = await pool.query(
-      `SELECT id, nome, senha_hash, onboarded
-       FROM lojas
-       WHERE email = $1`,
+      `SELECT id, nome, senha_hash, onboarded FROM lojas WHERE email=$1`,
       [email]
     );
     if (result.rows.length === 0) {
@@ -84,31 +81,48 @@ export async function forgotPassword(req: Request, res: Response) {
     return res.status(400).json({ error: 'E‑mail obrigatório.' });
   }
   try {
-    // 1) busca loja pelo email
-    const { rows } = await pool.query('SELECT id, nome FROM lojas WHERE email = $1', [email]);
+    const { rows } = await pool.query('SELECT id, nome FROM lojas WHERE email=$1', [email]);
     if (rows.length === 0) {
       return res.status(404).json({ error: 'E‑mail não cadastrado.' });
     }
     const { id: lojaId, nome } = rows[0];
-
-    // 2) gera senha temporária e seu hash
     const tempPwd = generateTempPassword(12);
     const hash = await bcrypt.hash(tempPwd, 10);
-
-    // 3) atualiza direto no banco
-    await pool.query('UPDATE lojas SET senha_hash = $1 WHERE id = $2', [hash, lojaId]);
-
-    // 4) dispara e‑mail com a senha temporária
+    await pool.query('UPDATE lojas SET senha_hash=$1 WHERE id=$2', [hash, lojaId]);
     await transporter.sendMail({
       from: process.env.EMAIL_FROM,
       to: email,
       subject: 'Sua nova senha — Rouppi App',
-      text: `Olá ${nome},\n\nSua senha foi resetada. Use esta senha temporária para entrar:\n\n${tempPwd}\n\nPor favor, altere-a em seu perfil assim que possível.\n\n— Equipe Rouppi`
+      text: `Olá ${nome},\n\nSua senha foi resetada. Use esta senha temporária:\n\n${tempPwd}\n\n— Equipe Rouppi`
     });
-
-    return res.json({ message: 'Uma nova senha foi enviada para seu e‑mail.' });
+    return res.json({ message: 'Nova senha enviada por e‑mail.' });
   } catch (err: any) {
     console.error('❌ FORGOT-PASSWORD ERROR:', err);
     return res.status(500).json({ error: 'Erro ao resetar senha', detail: err.message });
+  }
+}
+
+// POST /api/auth/change-password
+export async function changePassword(req: Request, res: Response) {
+  const { email, senha_atual, senha_nova } = req.body;
+  if (!email || !senha_atual || !senha_nova) {
+    return res.status(400).json({ error: 'E‑mail, senha atual e nova são obrigatórios.' });
+  }
+  try {
+    const result = await pool.query('SELECT id, senha_hash FROM lojas WHERE email=$1', [email]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado.' });
+    }
+    const { id, senha_hash } = result.rows[0];
+    const match = await bcrypt.compare(senha_atual, senha_hash);
+    if (!match) {
+      return res.status(401).json({ error: 'Senha atual incorreta.' });
+    }
+    const newHash = await bcrypt.hash(senha_nova, 10);
+    await pool.query('UPDATE lojas SET senha_hash=$1 WHERE id=$2', [newHash, id]);
+    return res.json({ message: 'Senha alterada com sucesso.' });
+  } catch (err: any) {
+    console.error('❌ CHANGE-PASSWORD ERROR:', err);
+    return res.status(500).json({ error: 'Erro ao alterar senha', detail: err.message });
   }
 }
