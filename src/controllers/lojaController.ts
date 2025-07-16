@@ -1,11 +1,17 @@
-// src/controllers/lojaController.ts
 import { Request, Response } from 'express';
+import multer from 'multer';
 import { pool } from '../database/connection';
+// @ts-ignore: expo-server-sdk may not have types
+const { Expo } = require('expo-server-sdk');
+import crypto from 'crypto';
+
+const upload = multer({ dest: 'uploads/logos/' });
+const expo = new Expo();
 
 // GET /api/lojas
 export const getLojas = async (req: Request, res: Response) => {
   try {
-    const { rows } = await pool.query('SELECT id, nome, onboarded FROM lojas');
+    const { rows } = await pool.query('SELECT id, nome, logo_url, onboarded FROM lojas');
     return res.json(rows);
   } catch (error) {
     console.error('Erro ao buscar lojas:', error);
@@ -26,6 +32,7 @@ export const getLojaById = async (req: Request, res: Response) => {
               endereco_cidade AS cidade,
               endereco_estado AS estado,
               horario_funcionamento,
+              logo_url,
               onboarded
        FROM lojas
        WHERE id = $1`,
@@ -44,11 +51,21 @@ export const getLojaById = async (req: Request, res: Response) => {
 // POST /api/lojas
 export const createLoja = async (req: Request, res: Response) => {
   const {
-    nome, cnpj, email, telefone,
-    endereco_cep, endereco_rua, endereco_numero,
-    endereco_bairro, endereco_cidade, endereco_estado,
+    nome,
+    cnpj,
+    email,
+    telefone,
+    endereco_cep,
+    endereco_rua,
+    endereco_numero,
+    endereco_bairro,
+    endereco_cidade,
+    endereco_estado,
     horario_funcionamento,
-    banco, agencia, conta, tipo_conta
+    banco,
+    agencia,
+    conta,
+    tipo_conta
   } = req.body;
 
   try {
@@ -65,12 +82,10 @@ export const createLoja = async (req: Request, res: Response) => {
        ) VALUES (
          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, FALSE
        ) RETURNING id, nome, onboarded`,
-      [
-        nome, cnpj, email, telefone,
-        endereco_cep, endereco_rua, endereco_numero,
-        endereco_bairro, endereco_cidade, endereco_estado,
-        horariosJson
-      ]
+      [nome, cnpj, email, telefone,
+       endereco_cep, endereco_rua, endereco_numero,
+       endereco_bairro, endereco_cidade, endereco_estado,
+       horariosJson]
     );
     const loja = lojaResult.rows[0];
 
@@ -102,9 +117,18 @@ export const createLoja = async (req: Request, res: Response) => {
 export const updateLoja = async (req: Request, res: Response) => {
   const { id } = req.params;
   const {
-    cep, rua, numero, bairro, cidade, estado,
+    cep,
+    rua,
+    numero,
+    bairro,
+    cidade,
+    estado,
     horario_funcionamento,
-    banco, agencia, conta, tipo_conta
+    banco,
+    agencia,
+    conta,
+    tipo_conta,
+    logo_url
   } = req.body;
 
   if (!cep || !rua || !numero || !bairro || !cidade || !estado) {
@@ -125,9 +149,10 @@ export const updateLoja = async (req: Request, res: Response) => {
          endereco_cidade=$5,
          endereco_estado=$6,
          horario_funcionamento=$7,
+         logo_url=COALESCE($8,logo_url),
          onboarded=TRUE
-       WHERE id=$8`,
-      [cep, rua, numero, bairro, cidade, estado, horariosJson, id]
+       WHERE id=$9`,
+      [cep, rua, numero, bairro, cidade, estado, horariosJson, logo_url, id]
     );
 
     const banc = await pool.query(
@@ -156,6 +181,18 @@ export const updateLoja = async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Erro ao atualizar loja', detail: err.message });
   }
 };
+
+// POST /api/lojas/:id/logo
+export const uploadLogo = [
+  upload.single('logo'),
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    if (!req.file) return res.status(400).json({ error: 'Arquivo não enviado' });
+    const urlLogo = `/static/logos/${req.file.filename}`;
+    await pool.query('UPDATE lojas SET logo_url=$1 WHERE id=$2', [urlLogo, id]);
+    return res.json({ logo_url: urlLogo });
+  }
+];
 
 // GET /api/lojas/:id/dados-bancarios
 export const getDadosBancarios = async (req: Request, res: Response) => {
@@ -219,5 +256,80 @@ export const getPainelLoja = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Erro ao carregar painel da loja:', error);
     return res.status(500).json({ error: 'Erro ao carregar painel' });
+  }
+};
+
+// GET /api/lojas/:id/payment-settings
+export const getPaymentSettings = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query(
+      'SELECT provider, currency, ativo FROM loja_payment_settings WHERE id_loja=$1',
+      [id]
+    );
+    return res.json(rows[0] || {});
+  } catch (error) {
+    console.error('Erro ao buscar payment settings:', error);
+    return res.status(500).json({ error: 'Erro ao buscar payment settings' });
+  }
+};
+
+// PUT /api/lojas/:id/payment-settings
+export const updatePaymentSettings = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { provider, api_key, webhook_secret, currency, ativo } = req.body;
+  try {
+    const { rowCount } = await pool.query(
+      'SELECT id_loja FROM loja_payment_settings WHERE id_loja=$1',
+      [id]
+    );
+    if (rowCount) {
+      await pool.query(
+        `UPDATE loja_payment_settings SET
+           provider=$1, api_key=$2, webhook_secret=$3, currency=$4, ativo=$5
+         WHERE id_loja=$6`,
+        [provider, api_key, webhook_secret, currency, ativo, id]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO loja_payment_settings (
+           id_loja, provider, api_key, webhook_secret, currency, ativo
+         ) VALUES ($1,$2,$3,$4,$5,$6)`,
+        [id, provider, api_key, webhook_secret, currency, ativo]
+      );
+    }
+    return res.json({ message: 'Payment settings atualizados' });
+  } catch (error:any) {
+    console.error('Erro ao atualizar payment settings:', error);
+    return res.status(500).json({ error: 'Erro ao atualizar payment settings' });
+  }
+};
+
+// POST /api/lojas/:id/notify-order
+export const notifyNewOrder = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { pedido } = req.body;
+  try {
+    const { rows: tokens } = await pool.query(
+      'SELECT fcm_token FROM tokens_push_loja WHERE id_loja=$1',
+      [id]
+    );
+    const messages = tokens
+      .filter(t => Expo.isExpoPushToken(t.fcm_token))
+      .map(t => ({
+        to: t.fcm_token,
+        sound: 'default',
+        title: `Novo pedido #${pedido.id}`,
+        body: `Valor: R$ ${pedido.valor_total.toFixed(2)}`,
+        data: { pedidoId: pedido.id }
+      }));
+    const chunks = expo.chunkPushNotifications(messages);
+    for (const chunk of chunks) {
+      await expo.sendPushNotificationsAsync(chunk);
+    }
+    return res.json({ message: 'Notificações enviadas' });
+  } catch (err) {
+    console.error('Erro enviando push:', err);
+    return res.status(500).json({ error: 'Falha ao enviar notificações' });
   }
 };

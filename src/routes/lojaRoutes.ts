@@ -1,12 +1,15 @@
-// src/routes/lojaRoutes.ts
 import { Router } from 'express';
 import {
   getLojas,
   getLojaById,
   createLoja,
   updateLoja,
+  uploadLogo,
   getDadosBancarios,
-  getPainelLoja
+  getPainelLoja,
+  getPaymentSettings,
+  updatePaymentSettings,
+  notifyNewOrder
 } from '../controllers/lojaController';
 
 const router = Router();
@@ -20,13 +23,23 @@ router.get('/:id', getLojaById);
 // Criar loja
 router.post('/', createLoja);
 
-// Atualizar loja (Onboarding + dados bancários)
+// Atualizar loja (dados, bancários + logo_url)
 router.put('/:id', updateLoja);
 
-// Dados bancários da loja
+// Upload de logo
+router.post('/:id/logo', uploadLogo);
+
+// Dados bancários
 router.get('/:id/dados-bancarios', getDadosBancarios);
 
 // Painel da loja
 router.get('/:id/painel', getPainelLoja);
+
+// Configurações de pagamento
+router.get('/:id/payment-settings', getPaymentSettings);
+router.put('/:id/payment-settings', updatePaymentSettings);
+
+// Notificação de novo pedido
+router.post('/:id/notify-order', notifyNewOrder);
 
 export default router;
