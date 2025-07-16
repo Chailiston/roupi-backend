@@ -1,3 +1,4 @@
+// src/controllers/lojasController.ts
 import { Request, Response } from 'express';
 import multer from 'multer';
 import { pool } from '../database/connection';
@@ -117,6 +118,9 @@ export const createLoja = async (req: Request, res: Response) => {
 export const updateLoja = async (req: Request, res: Response) => {
   const { id } = req.params;
   const {
+    nome,
+    email,
+    telefone,
     cep,
     rua,
     numero,
@@ -131,6 +135,10 @@ export const updateLoja = async (req: Request, res: Response) => {
     logo_url
   } = req.body;
 
+  // Validações básicas
+  if (!nome || !email || !telefone) {
+    return res.status(400).json({ error: 'Preencha nome, e‑mail e telefone.' });
+  }
   if (!cep || !rua || !numero || !bairro || !cidade || !estado) {
     return res.status(400).json({ error: 'Preencha todos os campos de endereço.' });
   }
@@ -140,30 +148,51 @@ export const updateLoja = async (req: Request, res: Response) => {
       ? JSON.stringify(horario_funcionamento)
       : horario_funcionamento;
 
+    // 1) Atualiza dados da loja
     await pool.query(
       `UPDATE lojas SET
-         endereco_cep=$1,
-         endereco_rua=$2,
-         endereco_numero=$3,
-         endereco_bairro=$4,
-         endereco_cidade=$5,
-         endereco_estado=$6,
-         horario_funcionamento=$7,
-         logo_url=COALESCE($8,logo_url),
-         onboarded=TRUE
-       WHERE id=$9`,
-      [cep, rua, numero, bairro, cidade, estado, horariosJson, logo_url, id]
+         nome                  = $1,
+         email                 = $2,
+         telefone              = $3,
+         endereco_cep          = $4,
+         endereco_rua          = $5,
+         endereco_numero       = $6,
+         endereco_bairro       = $7,
+         endereco_cidade       = $8,
+         endereco_estado       = $9,
+         horario_funcionamento = $10,
+         logo_url              = COALESCE($11, logo_url),
+         onboarded             = TRUE
+       WHERE id = $12`,
+      [
+        nome,
+        email,
+        telefone,
+        cep,
+        rua,
+        numero,
+        bairro,
+        cidade,
+        estado,
+        horariosJson,
+        logo_url,
+        id,
+      ]
     );
 
+    // 2) Upsert dados bancários
     const banc = await pool.query(
-      'SELECT id_loja FROM dados_bancarios_loja WHERE id_loja=$1',
+      'SELECT id_loja FROM dados_bancarios_loja WHERE id_loja = $1',
       [id]
     );
     if (banc.rowCount) {
       await pool.query(
         `UPDATE dados_bancarios_loja SET
-           banco=$1, agencia=$2, conta=$3, tipo_conta=$4
-         WHERE id_loja=$5`,
+           banco      = $1,
+           agencia    = $2,
+           conta      = $3,
+           tipo_conta = $4
+         WHERE id_loja = $5`,
         [banco, agencia, conta, tipo_conta, id]
       );
     } else {
@@ -175,7 +204,25 @@ export const updateLoja = async (req: Request, res: Response) => {
       );
     }
 
-    return res.json({ message: 'Loja e dados bancários atualizados com sucesso' });
+    // 3) Busca e retorna loja completa
+    const { rows } = await pool.query(
+      `SELECT
+         id, nome, email, telefone,
+         endereco_cep   AS cep,
+         endereco_rua   AS rua,
+         endereco_numero AS numero,
+         endereco_bairro AS bairro,
+         endereco_cidade AS cidade,
+         endereco_estado AS estado,
+         horario_funcionamento,
+         logo_url,
+         onboarded
+       FROM lojas
+       WHERE id = $1`,
+      [id]
+    );
+
+    return res.json(rows[0]);
   } catch (err: any) {
     console.error('❌ UPDATE LOJA ERROR:', err);
     return res.status(500).json({ error: 'Erro ao atualizar loja', detail: err.message });
@@ -188,9 +235,29 @@ export const uploadLogo = [
   async (req: Request, res: Response) => {
     const { id } = req.params;
     if (!req.file) return res.status(400).json({ error: 'Arquivo não enviado' });
+
     const urlLogo = `/static/logos/${req.file.filename}`;
-    await pool.query('UPDATE lojas SET logo_url=$1 WHERE id=$2', [urlLogo, id]);
-    return res.json({ logo_url: urlLogo });
+    await pool.query('UPDATE lojas SET logo_url = $1 WHERE id = $2', [urlLogo, id]);
+
+    // Busca e retorna loja completa com logo atualizado
+    const { rows } = await pool.query(
+      `SELECT
+         id, nome, email, telefone,
+         endereco_cep   AS cep,
+         endereco_rua   AS rua,
+         endereco_numero AS numero,
+         endereco_bairro AS bairro,
+         endereco_cidade AS cidade,
+         endereco_estado AS estado,
+         horario_funcionamento,
+         logo_url,
+         onboarded
+       FROM lojas
+       WHERE id = $1`,
+      [id]
+    );
+
+    return res.json(rows[0]);
   }
 ];
 
