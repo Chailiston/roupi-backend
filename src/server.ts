@@ -51,10 +51,18 @@ app.post('/api/auth/test-body', (req, res) => {
 // 3) Rotas da API
 app.use('/api/auth', authRoutes);
 app.use('/api/lojas', lojaRoutes);
+
+// produtos e imagens
 app.use('/api/lojas/:lojaId/produtos', produtoRoutes);
 app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens', produtoImagemRoutes);
+
+// variações de produto vinculadas ao produto
+
+app.use('/api/lojas/:lojaId/produtos/:produtoId/variacoes',
+        variacaoProdutoRoutes);
+
+// demais endpoints
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes);
-app.use('/api/variacoes', variacaoProdutoRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/enderecos', enderecoClienteRoutes);
 app.use('/api/itens-pedido', itemPedidoRoutes);
