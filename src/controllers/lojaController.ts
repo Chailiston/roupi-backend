@@ -10,23 +10,33 @@ const upload = multer({ dest: 'uploads/logos/' });
 const expo = new Expo();
 
 /**
- * Busca dados básicos da loja (endereço, onboarding e logo).
+ * Busca dados básicos da loja (endereço, onboarding, logo) e os dados bancários.
  */
 async function fetchLoja(id: string) {
   const { rows } = await pool.query(
     `SELECT
-        id, nome, cnpj, email, telefone,
-        endereco_cep   AS cep,
-        endereco_rua   AS rua,
-        endereco_numero AS numero,
-        endereco_bairro AS bairro,
-        endereco_cidade AS cidade,
-        endereco_estado AS estado,
-        horario_funcionamento,
-        logo_url,
-        onboarded
-     FROM lojas
-     WHERE id = $1`,
+       l.id,
+       l.nome,
+       l.cnpj,
+       l.email,
+       l.telefone,
+       l.endereco_cep    AS cep,
+       l.endereco_rua    AS rua,
+       l.endereco_numero AS numero,
+       l.endereco_bairro AS bairro,
+       l.endereco_cidade AS cidade,
+       l.endereco_estado AS estado,
+       l.horario_funcionamento,
+       l.logo_url,
+       l.onboarded,
+       db.banco,
+       db.agencia,
+       db.conta,
+       db.tipo_conta
+     FROM lojas l
+     LEFT JOIN dados_bancarios_loja db
+       ON db.id_loja = l.id
+     WHERE l.id = $1`,
     [id]
   );
   return rows[0];
