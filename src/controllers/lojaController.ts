@@ -1,12 +1,9 @@
 // src/controllers/lojasController.ts
 import { Request, Response } from 'express';
-import multer from 'multer';
 import { pool } from '../database/connection';
 // @ts-ignore
 import { Expo } from 'expo-server-sdk';
-import crypto from 'crypto';
 
-const upload = multer({ dest: 'uploads/logos/' });
 const expo = new Expo();
 
 /**
@@ -179,7 +176,6 @@ export const createLoja = async (req: Request, res: Response) => {
     );
     const loja = rows[0];
 
-    // upsert dados bancários se vierem
     await upsertDadosBancarios(loja.id, banco, agencia, conta, tipo_conta);
 
     return res.status(201).json({ message: 'Loja criada com sucesso', loja });
@@ -225,7 +221,7 @@ export const updateLoja = async (req: Request, res: Response) => {
         ? JSON.stringify(horario_funcionamento)
         : horario_funcionamento;
 
-    // Atualiza a tabela lojas
+    // Atualiza a tabela lojas (agora logo_url vem direto no body)
     await pool.query(
       `UPDATE lojas SET
          nome                  = $1,
@@ -238,7 +234,7 @@ export const updateLoja = async (req: Request, res: Response) => {
          endereco_cidade       = $8,
          endereco_estado       = $9,
          horario_funcionamento = $10,
-         logo_url              = COALESCE($11, logo_url),
+         logo_url              = $11,
          onboarded             = TRUE
        WHERE id = $12`,
       [
@@ -248,10 +244,8 @@ export const updateLoja = async (req: Request, res: Response) => {
       ]
     );
 
-    // upsert dados bancários
     await upsertDadosBancarios(id, banco, agencia, conta, tipo_conta);
 
-    // retorna perfil completo atualizado
     const loja = await fetchLoja(id);
     return res.json(loja);
   } catch (err: any) {
@@ -261,24 +255,6 @@ export const updateLoja = async (req: Request, res: Response) => {
       .json({ error: 'Erro ao atualizar loja', detail: err.message });
   }
 };
-
-// POST /api/lojas/:id/logo
-export const uploadLogo = [
-  upload.single('logo'),
-  async (req: Request, res: Response) => {
-    const { id } = req.params;
-    if (!req.file) {
-      return res.status(400).json({ error: 'Arquivo não enviado' });
-    }
-    const urlLogo = `/static/logos/${req.file.filename}`;
-    await pool.query(
-      'UPDATE lojas SET logo_url = $1 WHERE id = $2',
-      [urlLogo, id]
-    );
-    const loja = await fetchLoja(id);
-    return res.json(loja);
-  }
-];
 
 // GET /api/lojas/:id/dados-bancarios
 export const getDadosBancarios = async (req: Request, res: Response) => {

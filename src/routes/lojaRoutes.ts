@@ -1,17 +1,15 @@
-// src/routes/lojaRoutes.ts
 import { Router } from 'express';
 import {
   getLojas,
   getLojaById,
   createLoja,
   updateLoja,
-  uploadLogo,
   getDadosBancarios,
   getPainelLoja,
   getPaymentSettings,
   updatePaymentSettings,
   notifyNewOrder
-} from '../controllers/lojaController';  // <-- plural, deve bater com o nome do arquivo
+} from '../controllers/lojaController';
 
 const router = Router();
 
@@ -26,9 +24,6 @@ router.post('/', createLoja);
 
 // Atualizar loja (dados básicos + bancários)
 router.put('/:id', updateLoja);
-
-// Upload de logo
-router.post('/:id/logo', uploadLogo);
 
 // Obter dados bancários (separado, caso precise endpoint dedicado)
 router.get('/:id/dados-bancarios', getDadosBancarios);

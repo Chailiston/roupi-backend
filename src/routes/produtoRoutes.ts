@@ -1,13 +1,18 @@
+// src/routes/produtoRoutes.ts
 import { Router } from 'express';
-import { getProdutosByLoja, createProduto, updateProduto } from '../controllers/produtoController';
+import {
+  getProdutosByLoja,
+  getProdutoById,
+  createProduto,
+  updateProduto
+} from '../controllers/produtoController';
 
 const router = Router({ mergeParams: true });
 
-// Listar produtos da loja
+// Produtos: CRUD
 router.get('/', getProdutosByLoja);
-// Criar novo produto
+router.get('/:produtoId', getProdutoById);
 router.post('/', createProduto);
-// Atualizar produto existente
 router.put('/:produtoId', updateProduto);
 
 export default router;
