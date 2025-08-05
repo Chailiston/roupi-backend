@@ -100,7 +100,7 @@ export const updateProduto = async (req: Request, res: Response) => {
        WHERE id_loja = $7
          AND id      = $8
        RETURNING *`,
-      [nome, descricao, categoria, preco_base, ativo, lojaId, produtoId]
+      [nome, descricao, categoria, preco_base, ativo,imagem_url, lojaId, produtoId]
     );
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Produto não encontrado' });
