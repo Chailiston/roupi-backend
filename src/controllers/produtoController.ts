@@ -43,7 +43,6 @@ export const getProdutoById = async (req: Request, res: Response) => {
          preco_base,
          ativo,
          criado_em
-
        FROM produtos
        WHERE id_loja = $1 AND id = $2`,
       [lojaId, produtoId]
@@ -91,16 +90,25 @@ export const updateProduto = async (req: Request, res: Response) => {
   try {
     const result = await pool.query(
       `UPDATE produtos SET
-         nome       = $1,
-         descricao  = $2,
-         categoria  = $3,
-         preco_base = $4,
-         ativo      = $5,
-	 imagem_url = $6
-       WHERE id_loja = $7
-         AND id      = $8
+         nome        = $1,
+         descricao   = $2,
+         categoria   = $3,
+         preco_base  = $4,
+         ativo       = $5,
+         imagem_url  = $6
+       WHERE id_loja  = $7
+         AND id       = $8
        RETURNING *`,
-      [nome, descricao, categoria, preco_base, ativo,imagem_url, lojaId, produtoId]
+      [
+        nome,
+        descricao,
+        categoria,
+        preco_base,
+        ativo,
+        imagem_url,
+        lojaId,
+        produtoId
+      ]
     );
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Produto não encontrado' });
