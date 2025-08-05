@@ -97,8 +97,8 @@ export const updateProduto = async (req: Request, res: Response) => {
          preco_base = $4,
          ativo      = $5,
 	 imagem_url = $6
-       WHERE id_loja = $6
-         AND id      = $7
+       WHERE id_loja = $7
+         AND id      = $8
        RETURNING *`,
       [nome, descricao, categoria, preco_base, ativo, lojaId, produtoId]
     );
