@@ -43,6 +43,7 @@ export const getProdutoById = async (req: Request, res: Response) => {
          preco_base,
          ativo,
          criado_em
+
        FROM produtos
        WHERE id_loja = $1 AND id = $2`,
       [lojaId, produtoId]
@@ -85,7 +86,7 @@ export const createProduto = async (req: Request, res: Response) => {
 // PUT /api/lojas/:lojaId/produtos/:produtoId
 export const updateProduto = async (req: Request, res: Response) => {
   const { lojaId, produtoId } = req.params;
-  const { nome, descricao, categoria, preco_base, ativo } = req.body;
+  const { nome, descricao, categoria, preco_base, ativo, imagem_url } = req.body;
 
   try {
     const result = await pool.query(
@@ -94,7 +95,8 @@ export const updateProduto = async (req: Request, res: Response) => {
          descricao  = $2,
          categoria  = $3,
          preco_base = $4,
-         ativo      = $5
+         ativo      = $5,
+	 imagem_url = $6
        WHERE id_loja = $6
          AND id      = $7
        RETURNING *`,
