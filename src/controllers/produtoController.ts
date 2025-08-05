@@ -17,7 +17,8 @@ export const getProdutosByLoja = async (req: Request, res: Response) => {
          categoria,
          preco_base,
          ativo,
-         criado_em
+         criado_em,
+         imagem_url
        FROM produtos
        WHERE id_loja = $1
        ORDER BY criado_em DESC`,
@@ -42,7 +43,8 @@ export const getProdutoById = async (req: Request, res: Response) => {
          categoria,
          preco_base,
          ativo,
-         criado_em
+         criado_em,
+         imagem_url
        FROM produtos
        WHERE id_loja = $1 AND id = $2`,
       [lojaId, produtoId]
