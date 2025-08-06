@@ -1,23 +1,24 @@
-import { Router } from 'express';
+// src/routes/variacoesRoutes.ts
+import { Router } from 'express'
 import {
   getVariacoesByProduto,
   createVariacao,
   updateVariacao,
   deleteVariacao
-} from '../controllers/variacaoProdutoController';
+} from '../controllers/variacaoController'
 
-const router = Router({ mergeParams: true });
+const router = Router({ mergeParams: true })
 
-// Listar variações de um produto
-router.get('/', getVariacoesByProduto);
+// GET    /api/lojas/:lojaId/produtos/:produtoId/variacoes
+router.get('/', getVariacoesByProduto)
 
-// Criar nova variação
-router.post('/', createVariacao);
+// POST   /api/lojas/:lojaId/produtos/:produtoId/variacoes
+router.post('/', createVariacao)
 
-// Atualizar uma variação existente
-router.put('/:id', updateVariacao);
+// PUT    /api/lojas/:lojaId/produtos/:produtoId/variacoes/:id
+router.put('/:id', updateVariacao)
 
-// Excluir variação
-router.delete('/:id', deleteVariacao);
+// DELETE /api/lojas/:lojaId/produtos/:produtoId/variacoes/:id
+router.delete('/:id', deleteVariacao)
 
-export default router;
+export default router
