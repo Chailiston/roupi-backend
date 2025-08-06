@@ -12,7 +12,7 @@ import lojaRoutes            from './routes/lojaRoutes'
 // rotas de produto, imagens e variações
 import produtoRoutes         from './routes/produtoRoutes'
 import produtoImagemRoutes   from './routes/produtoImagemRoutes'
-import variacaoProdutoRoutes from './routes/variacaoProdutoRoutes'
+import variacaoProdutoRoutes from './routes/variacoesRoutes'
 
 // rotas do cliente
 import clientAuthRoutes       from './routes/clientAuthRoutes'
