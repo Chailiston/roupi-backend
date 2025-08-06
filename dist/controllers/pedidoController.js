@@ -1,72 +1,118 @@
 "use strict";
+// src/controllers/pedidoController.ts
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateStatusPedido = exports.createPedido = exports.getPedidosPorCliente = exports.getPedidoById = exports.getPedidos = void 0;
+exports.updatePedidoStatus = exports.getPedidoById = exports.getPedidosByLoja = void 0;
 const connection_1 = require("../database/connection");
-// Listar todos os pedidos
-const getPedidos = async (_req, res) => {
+// GET /api/lojas/:lojaId/pedidos
+const getPedidosByLoja = async (req, res) => {
     try {
-        const result = await connection_1.pool.query('SELECT * FROM pedidos ORDER BY criado_em DESC');
-        res.json(result.rows);
+        const { lojaId } = req.params;
+        const result = await connection_1.pool.query(`SELECT 
+         id,
+         id_cliente,
+         status,
+         forma_pagamento,
+         valor_total,
+         observacoes,
+         criado_em
+       FROM pedidos
+       WHERE id_loja = $1
+       ORDER BY criado_em DESC`, [lojaId]);
+        return res.json(result.rows);
     }
-    catch (error) {
-        res.status(500).json({ error: 'Erro ao buscar pedidos' });
+    catch (err) {
+        console.error('Erro ao buscar pedidos da loja:', err);
+        return res.status(500).json({ error: 'Erro interno' });
     }
 };
-exports.getPedidos = getPedidos;
-// Buscar pedido por ID
+exports.getPedidosByLoja = getPedidosByLoja;
+// GET /api/lojas/:lojaId/pedidos/:pedidoId
 const getPedidoById = async (req, res) => {
-    const { id } = req.params;
     try {
-        const result = await connection_1.pool.query('SELECT * FROM pedidos WHERE id = $1', [id]);
-        if (result.rowCount === 0)
+        const { lojaId, pedidoId } = req.params;
+        // 1) busca os dados principais do pedido, incluindo referência ao endereço de entrega
+        const pedidoRes = await connection_1.pool.query(`SELECT 
+         id,
+         id_cliente,
+         status,
+         forma_pagamento,
+         valor_total,
+         observacoes,
+         criado_em,
+         id_endereco_entrega
+       FROM pedidos
+       WHERE id_loja = $1
+         AND id = $2`, [lojaId, pedidoId]);
+        if (pedidoRes.rowCount === 0) {
             return res.status(404).json({ error: 'Pedido não encontrado' });
-        res.json(result.rows[0]);
+        }
+        const pedido = pedidoRes.rows[0];
+        // 2) busca os itens do pedido
+        const itensRes = await connection_1.pool.query(`SELECT 
+         id,
+         nome_produto,
+         quantidade,
+         preco_unitario AS price,
+         subtotal
+       FROM itens_pedido
+       WHERE id_pedido = $1`, [pedidoId]);
+        // 3) busca dados do cliente
+        const clienteRes = await connection_1.pool.query(`SELECT nome, email, telefone
+       FROM clientes
+       WHERE id = $1`, [pedido.id_cliente]);
+        const customer = clienteRes.rows[0] || null;
+        // 4) busca endereço de entrega, se informado
+        let endereco = null;
+        if (pedido.id_endereco_entrega) {
+            const endRes = await connection_1.pool.query(`SELECT
+           apelido,
+           rua,
+           numero,
+           complemento,
+           bairro,
+           cidade,
+           estado,
+           cep
+         FROM enderecos_cliente
+         WHERE id = $1`, [pedido.id_endereco_entrega]);
+            endereco = endRes.rows[0] || null;
+        }
+        // 5) retorna estrutura completa
+        return res.json({
+            ...pedido,
+            items: itensRes.rows,
+            customer,
+            endereco
+        });
     }
-    catch (error) {
-        res.status(500).json({ error: 'Erro ao buscar pedido' });
+    catch (err) {
+        console.error('Erro ao buscar pedido:', err);
+        return res.status(500).json({ error: 'Erro interno' });
     }
 };
 exports.getPedidoById = getPedidoById;
-// Listar pedidos de um cliente
-const getPedidosPorCliente = async (req, res) => {
-    const { id } = req.params;
+// PUT /api/lojas/:lojaId/pedidos/:pedidoId/status
+const updatePedidoStatus = async (req, res) => {
     try {
-        const result = await connection_1.pool.query('SELECT * FROM pedidos WHERE cliente_id = $1 ORDER BY criado_em DESC', [id]);
-        res.json(result.rows);
+        const { lojaId, pedidoId } = req.params;
+        const { status } = req.body;
+        const result = await connection_1.pool.query(`UPDATE pedidos
+         SET status = $1
+       WHERE id_loja = $2
+         AND id = $3
+       RETURNING status`, [status, lojaId, pedidoId]);
+        if (result.rowCount === 0) {
+            return res
+                .status(404)
+                .json({ error: 'Pedido não encontrado ou não pertence à loja' });
+        }
+        return res.json({ status: result.rows[0].status });
     }
-    catch (error) {
-        res.status(500).json({ error: 'Erro ao buscar pedidos do cliente' });
+    catch (err) {
+        console.error('Erro ao atualizar status do pedido:', err);
+        return res
+            .status(500)
+            .json({ error: 'Erro interno ao atualizar status' });
     }
 };
-exports.getPedidosPorCliente = getPedidosPorCliente;
-// Criar pedido
-const createPedido = async (req, res) => {
-    const { cliente_id, loja_id, endereco_entrega, valor_total, status_pagamento, forma_pagamento, status_entrega } = req.body;
-    try {
-        const result = await connection_1.pool.query(`INSERT INTO pedidos 
-      (cliente_id, loja_id, endereco_entrega, valor_total, status_pagamento, forma_pagamento, status_entrega)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *`, [cliente_id, loja_id, endereco_entrega, valor_total, status_pagamento, forma_pagamento, status_entrega]);
-        res.status(201).json(result.rows[0]);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Erro ao criar pedido' });
-    }
-};
-exports.createPedido = createPedido;
-// Atualizar status do pedido
-const updateStatusPedido = async (req, res) => {
-    const { id } = req.params;
-    const { status_pagamento, status_entrega } = req.body;
-    try {
-        const result = await connection_1.pool.query(`UPDATE pedidos 
-       SET status_pagamento = $1, status_entrega = $2
-       WHERE id = $3
-       RETURNING *`, [status_pagamento, status_entrega, id]);
-        res.json(result.rows[0]);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Erro ao atualizar status do pedido' });
-    }
-};
-exports.updateStatusPedido = updateStatusPedido;
+exports.updatePedidoStatus = updatePedidoStatus;

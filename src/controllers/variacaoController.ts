@@ -41,6 +41,48 @@ export const getVariacoesByProduto = async (req: Request, res: Response) => {
   }
 };
 
+// GET /api/lojas/:lojaId/produtos/:produtoId/variacoes/:id
+export const getVariacaoById = async (req: Request, res: Response) => {
+  const { lojaId, produtoId, id } = req.params;
+  try {
+    // 1) garante que o produto pertence à loja
+    const produtoCheck = await pool.query(
+      'SELECT id FROM produtos WHERE id = $1 AND id_loja = $2',
+      [produtoId, lojaId]
+    );
+    if (produtoCheck.rowCount === 0) {
+      return res.status(404).json({ error: 'Produto não encontrado para esta loja' });
+    }
+
+    // 2) busca a variação específica
+    const result = await pool.query(
+      `SELECT
+         id,
+         id_produto,
+         tamanho,
+         cor,
+         sku,
+         preco,
+         estoque,
+         ativo,
+         preco_extra,
+         peso,
+         imagem_url
+       FROM variacoes_produto
+       WHERE id = $1 AND id_produto = $2`,
+      [id, produtoId]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Variação não encontrada para este produto/loja' });
+    }
+
+    return res.json(result.rows[0]);
+  } catch (error: any) {
+    console.error('getVariacaoById error:', error.message, '\n', error.stack);
+    return res.status(500).json({ error: 'Erro ao buscar variação' });
+  }
+};
+
 // POST /api/lojas/:lojaId/produtos/:produtoId/variacoes
 export const createVariacao = async (req: Request, res: Response) => {
   const { lojaId, produtoId } = req.params;

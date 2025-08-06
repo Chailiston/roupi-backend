@@ -2,6 +2,7 @@
 import { Router } from 'express'
 import {
   getVariacoesByProduto,
+  getVariacaoById,
   createVariacao,
   updateVariacao,
   deleteVariacao
@@ -11,6 +12,9 @@ const router = Router({ mergeParams: true })
 
 // GET    /api/lojas/:lojaId/produtos/:produtoId/variacoes
 router.get('/', getVariacoesByProduto)
+
+// GET    /api/lojas/:lojaId/produtos/:produtoId/variacoes/:id
+router.get('/:id', getVariacaoById)
 
 // POST   /api/lojas/:lojaId/produtos/:produtoId/variacoes
 router.post('/', createVariacao)

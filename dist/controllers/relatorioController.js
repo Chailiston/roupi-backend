@@ -1,28 +1,80 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clientesAtivos = exports.faturamentoMensal = exports.produtosMaisVendidos = exports.vendasPorLoja = void 0;
+exports.getTopProducts = exports.getSalesByDay = exports.getKpis = void 0;
 const connection_1 = require("../database/connection");
-// Vendas por loja
-const vendasPorLoja = async (_req, res) => {
-    const result = await connection_1.pool.query('SELECT * FROM view_vendas_por_loja');
-    res.json(result.rows);
+// GET /api/relatorios/kpis
+const getKpis = async (_req, res) => {
+    try {
+        const { rows: dayRows } = await connection_1.pool.query(`SELECT COALESCE(SUM(valor_total),0) AS total
+       FROM pedidos
+       WHERE DATE(criado_em) = CURRENT_DATE;`);
+        const daySales = parseFloat(dayRows[0].total);
+        const { rows: weekRows } = await connection_1.pool.query(`SELECT COALESCE(SUM(valor_total),0) AS total
+       FROM pedidos
+       WHERE criado_em >= date_trunc('week', CURRENT_DATE);`);
+        const weekSales = parseFloat(weekRows[0].total);
+        const { rows: monthRows } = await connection_1.pool.query(`SELECT COALESCE(SUM(valor_total),0) AS total
+       FROM pedidos
+       WHERE criado_em >= date_trunc('month', CURRENT_DATE);`);
+        const monthSales = parseFloat(monthRows[0].total);
+        const { rows: avgRows } = await connection_1.pool.query(`SELECT COALESCE(AVG(valor_total),0) AS avg_ticket
+       FROM pedidos
+       WHERE criado_em >= date_trunc('month', CURRENT_DATE);`);
+        const ticketAverage = parseFloat(avgRows[0].avg_ticket);
+        const { rows: pendingRows } = await connection_1.pool.query(`SELECT COALESCE(SUM(ped.valor_total),0) AS total
+       FROM pedidos ped
+       JOIN pagamentos pg ON pg.id_pedido = ped.id
+       WHERE pg.status_pagamento <> 'paid';`);
+        const pendingReceipts = parseFloat(pendingRows[0].total);
+        res.json({ daySales, weekSales, monthSales, ticketAverage, pendingReceipts });
+    }
+    catch (err) {
+        console.error('Erro ao obter KPIs:', err);
+        res.status(500).json({ error: 'Erro interno ao obter KPIs' });
+    }
 };
-exports.vendasPorLoja = vendasPorLoja;
-// Produtos mais vendidos
-const produtosMaisVendidos = async (_req, res) => {
-    const result = await connection_1.pool.query('SELECT * FROM view_produtos_mais_vendidos');
-    res.json(result.rows);
+exports.getKpis = getKpis;
+// GET /api/relatorios/vendas-por-dia?start=ISO&end=ISO
+const getSalesByDay = async (req, res) => {
+    try {
+        const start = req.query.start;
+        const end = req.query.end;
+        const { rows } = await connection_1.pool.query(`SELECT
+         TO_CHAR(DATE(criado_em),'YYYY-MM-DD') AS dia,
+         SUM(valor_total)::numeric AS total
+       FROM pedidos
+       WHERE criado_em BETWEEN $1 AND $2
+       GROUP BY dia
+       ORDER BY dia`, [start, end]);
+        const result = rows.map(r => ({ dia: r.dia, total: parseFloat(r.total) }));
+        res.json(result);
+    }
+    catch (err) {
+        console.error('Erro ao obter vendas por dia:', err);
+        res.status(500).json({ error: 'Erro interno ao obter vendas por dia' });
+    }
 };
-exports.produtosMaisVendidos = produtosMaisVendidos;
-// Faturamento por mês
-const faturamentoMensal = async (_req, res) => {
-    const result = await connection_1.pool.query('SELECT * FROM view_faturamento_por_mes');
-    res.json(result.rows);
+exports.getSalesByDay = getSalesByDay;
+// GET /api/relatorios/produtos-mais-vendidos?start=ISO&end=ISO
+const getTopProducts = async (req, res) => {
+    try {
+        const start = req.query.start;
+        const end = req.query.end;
+        const { rows } = await connection_1.pool.query(`SELECT p.nome,
+              SUM(i.quantidade)::bigint AS quantidade
+       FROM itens_pedido i
+       JOIN pedidos ped ON ped.id = i.id_pedido
+       JOIN produtos p ON p.id = i.id_produto
+       WHERE ped.criado_em BETWEEN $1 AND $2
+       GROUP BY p.nome
+       ORDER BY quantidade DESC
+       LIMIT 10`, [start, end]);
+        const result = rows.map(r => ({ nome: r.nome, quantidade: parseInt(r.quantidade, 10) }));
+        res.json(result);
+    }
+    catch (err) {
+        console.error('Erro ao obter produtos mais vendidos:', err);
+        res.status(500).json({ error: 'Erro interno ao obter produtos mais vendidos' });
+    }
 };
-exports.faturamentoMensal = faturamentoMensal;
-// Clientes mais ativos
-const clientesAtivos = async (_req, res) => {
-    const result = await connection_1.pool.query('SELECT * FROM view_clientes_ativos');
-    res.json(result.rows);
-};
-exports.clientesAtivos = clientesAtivos;
+exports.getTopProducts = getTopProducts;
