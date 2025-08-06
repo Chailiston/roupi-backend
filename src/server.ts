@@ -66,7 +66,10 @@ app.use('/api/lojas', lojaRoutes);
 // Produtos, imagens e variações da loja
 app.use('/api/lojas/:lojaId/produtos', produtoRoutes);
 app.use('/api/lojas/:lojaId/produtos', produtoImagemRoutes);
-app.use('/api/lojas/:lojaId/produtos', variacaoProdutoRoutes);
+app.use(
+  '/api/lojas/:lojaId/produtos/:produtoId/variacoes',
+  variacaoProdutoRoutes
+);
 
 // Autenticação do cliente
 app.use('/api/cliente/auth', clientAuthRoutes);
