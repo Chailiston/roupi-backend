@@ -9,10 +9,18 @@ import {
 
 const router = Router({ mergeParams: true });
 
-// Imagens de produto (máx 10)
-router.get('/:produtoId/imagens',   getImagensByProduto);
-router.post('/:produtoId/imagens',  addImagemProduto);
-router.delete('/:produtoId/imagens/:imagemId', deleteImagemProduto);
-router.put('/:produtoId/imagens/:imagemId/capa', setCoverImage);
+// agora, montado em /api/lojas/:lojaId/produtos/:produtoId/imagens
+
+// GET    /
+router.get('/', getImagensByProduto);
+
+// POST   /
+router.post('/', addImagemProduto);
+
+// DELETE /:imagemId
+router.delete('/:imagemId', deleteImagemProduto);
+
+// PUT    /:imagemId/capa
+router.put('/:imagemId/capa', setCoverImage);
 
 export default router;

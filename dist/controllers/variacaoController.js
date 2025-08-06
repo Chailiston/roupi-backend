@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteVariacao = exports.updateVariacao = exports.createVariacao = exports.getVariacoesByProduto = void 0;
+exports.deleteVariacao = exports.updateVariacao = exports.createVariacao = exports.getVariacaoById = exports.getVariacoesByProduto = void 0;
 const connection_1 = require("../database/connection");
 // GET /api/lojas/:lojaId/produtos/:produtoId/variacoes
 const getVariacoesByProduto = async (req, res) => {
@@ -35,6 +35,41 @@ const getVariacoesByProduto = async (req, res) => {
     }
 };
 exports.getVariacoesByProduto = getVariacoesByProduto;
+// GET /api/lojas/:lojaId/produtos/:produtoId/variacoes/:id
+const getVariacaoById = async (req, res) => {
+    const { lojaId, produtoId, id } = req.params;
+    try {
+        // 1) garante que o produto pertence à loja
+        const produtoCheck = await connection_1.pool.query('SELECT id FROM produtos WHERE id = $1 AND id_loja = $2', [produtoId, lojaId]);
+        if (produtoCheck.rowCount === 0) {
+            return res.status(404).json({ error: 'Produto não encontrado para esta loja' });
+        }
+        // 2) busca a variação específica
+        const result = await connection_1.pool.query(`SELECT
+         id,
+         id_produto,
+         tamanho,
+         cor,
+         sku,
+         preco,
+         estoque,
+         ativo,
+         preco_extra,
+         peso,
+         imagem_url
+       FROM variacoes_produto
+       WHERE id = $1 AND id_produto = $2`, [id, produtoId]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Variação não encontrada para este produto/loja' });
+        }
+        return res.json(result.rows[0]);
+    }
+    catch (error) {
+        console.error('getVariacaoById error:', error.message, '\n', error.stack);
+        return res.status(500).json({ error: 'Erro ao buscar variação' });
+    }
+};
+exports.getVariacaoById = getVariacaoById;
 // POST /api/lojas/:lojaId/produtos/:produtoId/variacoes
 const createVariacao = async (req, res) => {
     const { lojaId, produtoId } = req.params;

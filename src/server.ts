@@ -66,10 +66,6 @@ app.use('/api/lojas', lojaRoutes)
 // Produtos, imagens e variações da loja
 // IMPORTANTE: montar imagens e variações antes da rota genérica de produtos
 app.use(
-  '/api/lojas/:lojaId/produtos/:produtoId/imagens',
-  produtoImagemRoutes
-)
-app.use(
   '/api/lojas/:lojaId/produtos/:produtoId/variacoes',
   variacaoProdutoRoutes
 )

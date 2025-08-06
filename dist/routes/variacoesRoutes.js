@@ -6,6 +6,8 @@ const variacaoController_1 = require("../controllers/variacaoController");
 const router = (0, express_1.Router)({ mergeParams: true });
 // GET    /api/lojas/:lojaId/produtos/:produtoId/variacoes
 router.get('/', variacaoController_1.getVariacoesByProduto);
+// GET    /api/lojas/:lojaId/produtos/:produtoId/variacoes/:id
+router.get('/:id', variacaoController_1.getVariacaoById);
 // POST   /api/lojas/:lojaId/produtos/:produtoId/variacoes
 router.post('/', variacaoController_1.createVariacao);
 // PUT    /api/lojas/:lojaId/produtos/:produtoId/variacoes/:id

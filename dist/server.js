@@ -14,7 +14,6 @@ const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
 const lojaRoutes_1 = __importDefault(require("./routes/lojaRoutes"));
 // rotas de produto, imagens e variações
 const produtoRoutes_1 = __importDefault(require("./routes/produtoRoutes"));
-const produtoImagemRoutes_1 = __importDefault(require("./routes/produtoImagemRoutes"));
 const variacoesRoutes_1 = __importDefault(require("./routes/variacoesRoutes"));
 // rotas do cliente
 const clientAuthRoutes_1 = __importDefault(require("./routes/clientAuthRoutes"));
@@ -61,7 +60,6 @@ app.use('/api/auth', authRoutes_1.default);
 app.use('/api/lojas', lojaRoutes_1.default);
 // Produtos, imagens e variações da loja
 // IMPORTANTE: montar imagens e variações antes da rota genérica de produtos
-app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens', produtoImagemRoutes_1.default);
 app.use('/api/lojas/:lojaId/produtos/:produtoId/variacoes', variacoesRoutes_1.default);
 app.use('/api/lojas/:lojaId/produtos', produtoRoutes_1.default);
 // Autenticação do cliente
