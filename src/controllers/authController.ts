@@ -92,8 +92,8 @@ export async function forgotPassword(req: Request, res: Response) {
     await transporter.sendMail({
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: 'Sua nova senha — Rouppi App',
-      text: `Olá ${nome},\n\nSua senha foi resetada. Use esta senha temporária:\n\n${tempPwd}\n\n— Equipe Rouppi`
+      subject: 'Sua nova senha — Roupp App',
+      text: `Olá ${nome},\n\nSua senha foi resetada. Use esta senha temporária:\n\n${tempPwd}\n\n— Equipe Roupp`
     });
     return res.json({ message: 'Nova senha enviada por e‑mail.' });
   } catch (err: any) {
