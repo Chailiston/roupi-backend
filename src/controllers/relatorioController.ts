@@ -14,31 +14,27 @@ export const getSalesSummary = async (_req: Request, res: Response) => {
       yearQuery
     ] = await Promise.all([
       pool.query(
-        `SELECT 
-           COALESCE(SUM(valor_total),0) AS total, 
-           COUNT(*)           AS count
-         FROM pedidos 
+        `SELECT COALESCE(SUM(valor_total),0) AS total,
+                COUNT(*)           AS count
+         FROM pedidos
          WHERE DATE(criado_em) = CURRENT_DATE;`
       ),
       pool.query(
-        `SELECT 
-           COALESCE(SUM(valor_total),0) AS total, 
-           COUNT(*)           AS count
-         FROM pedidos 
+        `SELECT COALESCE(SUM(valor_total),0) AS total,
+                COUNT(*)           AS count
+         FROM pedidos
          WHERE criado_em >= date_trunc('week', CURRENT_DATE);`
       ),
       pool.query(
-        `SELECT 
-           COALESCE(SUM(valor_total),0) AS total, 
-           COUNT(*)           AS count
-         FROM pedidos 
+        `SELECT COALESCE(SUM(valor_total),0) AS total,
+                COUNT(*)           AS count
+         FROM pedidos
          WHERE criado_em >= date_trunc('month', CURRENT_DATE);`
       ),
       pool.query(
-        `SELECT 
-           COALESCE(SUM(valor_total),0) AS total, 
-           COUNT(*)           AS count
-         FROM pedidos 
+        `SELECT COALESCE(SUM(valor_total),0) AS total,
+                COUNT(*)           AS count
+         FROM pedidos
          WHERE criado_em >= date_trunc('year', CURRENT_DATE);`
       )
     ]);
@@ -65,9 +61,8 @@ export const getTicketEvolution = async (req: Request, res: Response) => {
   try {
     const { start, end } = req.query as Record<string,string>;
     const { rows } = await pool.query(
-      `SELECT 
-         TO_CHAR(DATE(criado_em),'YYYY-MM-DD') AS day,
-         AVG(valor_total)::numeric AS avg_ticket
+      `SELECT TO_CHAR(DATE(criado_em),'YYYY-MM-DD') AS day,
+              AVG(valor_total)::numeric AS avg_ticket
        FROM pedidos
        WHERE criado_em BETWEEN $1 AND $2
        GROUP BY day
@@ -84,7 +79,30 @@ export const getTicketEvolution = async (req: Request, res: Response) => {
   }
 };
 
-// 1.3 Top 10 Produtos Mais Vendidos
+// 1.3 Vendas por Dia (entre start/end)
+export const getSalesByDay = async (req: Request, res: Response) => {
+  try {
+    const { start, end } = req.query as Record<string,string>;
+    const { rows } = await pool.query(
+      `SELECT TO_CHAR(DATE(criado_em),'YYYY-MM-DD') AS dia,
+              SUM(valor_total)::numeric                 AS total
+       FROM pedidos
+       WHERE criado_em BETWEEN $1 AND $2
+       GROUP BY dia
+       ORDER BY dia`,
+      [start, end]
+    );
+    res.json(rows.map(r => ({
+      dia: r.dia,
+      total: parseFloat(r.total)
+    })));
+  } catch (err: any) {
+    console.error('Erro ao obter Vendas por dia:', err);
+    res.status(500).json({ error: 'Erro interno ao obter Vendas por dia' });
+  }
+};
+
+// 1.4 Top 10 Produtos Mais Vendidos
 export const getTopProducts = async (req: Request, res: Response) => {
   try {
     const { start, end } = req.query as Record<string,string>;
@@ -110,14 +128,14 @@ export const getTopProducts = async (req: Request, res: Response) => {
   }
 };
 
-// 1.4 Vendas por Categoria
+// 1.5 Vendas por Categoria
 export const getSalesByCategory = async (req: Request, res: Response) => {
   try {
     const { start, end } = req.query as Record<string,string>;
     const { rows } = await pool.query(
       `SELECT p.categoria,
-              SUM(i.quantidade)          AS total_quantity,
-              SUM(i.quantidade * i.preco_unitario)::numeric AS total_revenue
+              SUM(i.quantidade)                              AS total_quantity,
+              SUM(i.quantidade * i.preco_unitario)::numeric  AS total_revenue
        FROM itens_pedido i
        JOIN pedidos ped ON ped.id = i.id_pedido
        JOIN produtos p ON p.id = i.id_produto
@@ -137,7 +155,7 @@ export const getSalesByCategory = async (req: Request, res: Response) => {
   }
 };
 
-// 1.5 Vendas por Loja (canal)
+// 1.6 Vendas por Loja (canal)
 export const getSalesByStore = async (req: Request, res: Response) => {
   try {
     const { start, end } = req.query as Record<string,string>;
@@ -161,6 +179,9 @@ export const getSalesByStore = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Erro interno ao obter Sales By Store' });
   }
 };
+
+// ... (as demais funções continuam inalteradas)
+
 
 // 2. Relatórios Financeiros
 
