@@ -7,47 +7,52 @@ import { pool } from '../database/connection';
 // 1.1 Sales Summary: totais e contagem para hoje, semana, mês e ano
 export const getSalesSummary = async (_req: Request, res: Response) => {
   try {
-    const [{ rows: dayRows }] = await Promise.all([
+    const [
+      dayQuery,
+      weekQuery,
+      monthQuery,
+      yearQuery
+    ] = await Promise.all([
       pool.query(
         `SELECT 
            COALESCE(SUM(valor_total),0) AS total, 
-           COUNT(*) AS count
+           COUNT(*)           AS count
          FROM pedidos 
          WHERE DATE(criado_em) = CURRENT_DATE;`
       ),
       pool.query(
         `SELECT 
            COALESCE(SUM(valor_total),0) AS total, 
-           COUNT(*) AS count
+           COUNT(*)           AS count
          FROM pedidos 
          WHERE criado_em >= date_trunc('week', CURRENT_DATE);`
       ),
       pool.query(
         `SELECT 
            COALESCE(SUM(valor_total),0) AS total, 
-           COUNT(*) AS count
+           COUNT(*)           AS count
          FROM pedidos 
          WHERE criado_em >= date_trunc('month', CURRENT_DATE);`
       ),
       pool.query(
         `SELECT 
            COALESCE(SUM(valor_total),0) AS total, 
-           COUNT(*) AS count
+           COUNT(*)           AS count
          FROM pedidos 
          WHERE criado_em >= date_trunc('year', CURRENT_DATE);`
       )
     ]);
-    // dayRows actually é um array de 4 resultados; vamos desestruturar
-    const [dayRes, weekRes, monthRes, yearRes] = dayRows as any;
-    const format = (r: any) => ({
+
+    const format = (r: { total: string; count: string }) => ({
       total: parseFloat(r.total),
       count: parseInt(r.count, 10)
     });
+
     res.json({
-      daily:   format(dayRes[0]),
-      weekly:  format(weekRes[0]),
-      monthly: format(monthRes[0]),
-      yearly:  format(yearRes[0])
+      daily:   format(dayQuery.rows[0]),
+      weekly:  format(weekQuery.rows[0]),
+      monthly: format(monthQuery.rows[0]),
+      yearly:  format(yearQuery.rows[0])
     });
   } catch (err: any) {
     console.error('Erro ao obter Sales Summary:', err);
@@ -79,7 +84,7 @@ export const getTicketEvolution = async (req: Request, res: Response) => {
   }
 };
 
-// 1.3 Top 10 Produtos Mais Vendidos (já existia)
+// 1.3 Top 10 Produtos Mais Vendidos
 export const getTopProducts = async (req: Request, res: Response) => {
   try {
     const { start, end } = req.query as Record<string,string>;
@@ -157,7 +162,6 @@ export const getSalesByStore = async (req: Request, res: Response) => {
   }
 };
 
-
 // 2. Relatórios Financeiros
 
 // 2.1 Recebimentos Pendentes vs Concluídos
@@ -228,7 +232,6 @@ export const getPriceHistory = async (_req: Request, res: Response) => {
     res.status(500).json({ error: 'Erro interno ao obter Price History' });
   }
 };
-
 
 // 3. Relatórios de Estoque e Inventário
 
@@ -301,10 +304,9 @@ export const getStockTurnover = async (_req: Request, res: Response) => {
   }
 };
 
-
 // 4. Relatórios de Promoções e Descontos
 
-// 4.1 Uso de Promoções (quantas vezes cada promo foi aplicada)
+// 4.1 Uso de Promoções
 export const getPromotionUsage = async (req: Request, res: Response) => {
   try {
     const { start, end } = req.query as Record<string,string>;
@@ -320,8 +322,8 @@ export const getPromotionUsage = async (req: Request, res: Response) => {
       [start, end]
     );
     res.json(rows.map(r => ({
-      promocaoId:   parseInt(r.id_promocao, 10),
-      usageCount:   parseInt(r.usage_count, 10)
+      promocaoId: parseInt(r.id_promocao, 10),
+      usageCount: parseInt(r.usage_count, 10)
     })));
   } catch (err: any) {
     console.error('Erro ao obter Promotion Usage:', err);
@@ -360,14 +362,10 @@ export const getPromotionTicketImpact = async (req: Request, res: Response) => {
   }
 };
 
-// 4.3 Vendas Incrementais por Promoção
-// (diferença de receita no período da promoção vs mesmo intervalo anterior)
+// 4.3 Vendas Incrementais por Promoção (stub)
 export const getPromotionIncrementalSales = async (_req: Request, res: Response) => {
-  // Este relatório costuma exigir lógica mais custom,
-  // então deixamos um stub para implementação futura:
   res.status(501).json({ error: 'Not implemented: Promotion Incremental Sales' });
 };
-
 
 // 5. Relatórios de Clientes e Engajamento
 
@@ -469,7 +467,6 @@ export const getCartAbandonment = async (_req: Request, res: Response) => {
   res.status(501).json({ error: 'Not implemented: Cart Abandonment' });
 };
 
-
 // 6. Relatórios de Atendimento e Feedback
 
 // 6.1 Avaliações de Loja e Produto
@@ -567,7 +564,6 @@ export const getNotificationsStats = async (_req: Request, res: Response) => {
     res.status(500).json({ error: 'Erro interno ao obter Notifications Stats' });
   }
 };
-
 
 // 7. Relatórios de Pagamentos e Conversão
 
