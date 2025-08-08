@@ -91,7 +91,7 @@ export async function forgotPassword(req: Request, res: Response) {
       return res.status(404).json({ error: 'E-mail não cadastrado.' });
     }
     const { id: clienteId, nome } = result.rows[0];
-    const tempPwd = generateTempPassword(12);
+    const tempPwd = generateTempPassword();
     console.log(`🛠️  [DEBUG] Senha temporária para ${email}: ${tempPwd}`);
     const hash = await bcrypt.hash(tempPwd, 10);
     await pool.query(
