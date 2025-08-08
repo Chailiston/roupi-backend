@@ -6,11 +6,9 @@ import nodemailer from 'nodemailer';
 import { pool } from '../../database/connection';
 
 // helper: gera string aleatória segura
-function generateTempPassword(length = 12): string {
-  return crypto.randomBytes(length * 2)
-    .toString('base64')
-    .replace(/[^a-zA-Z0-9]/g, '')
-    .slice(0, length);
+function generateTempPassword(): string {
+  const randomNumber = Math.floor(1000 + Math.random() * 9000);
+  return `Roupp${randomNumber}`;
 }
 
 // configurando Nodemailer
