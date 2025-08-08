@@ -6,8 +6,8 @@ import path from 'path'
 import { pool } from './database/connection'
 
 // rotas da loja (já existentes)
-import authRoutes            from './routes/authRoutes'
-import lojaRoutes            from './routes/lojaRoutes'
+import authRoutes          from './routes/authRoutes'
+import lojaRoutes          from './routes/lojaRoutes'
 
 // rotas de produto, imagens e variações
 import produtoRoutes         from './routes/produtoRoutes'
@@ -15,12 +15,12 @@ import produtoImagemRoutes   from './routes/produtoImagemRoutes'
 import variacaoProdutoRoutes from './routes/variacoesRoutes'
 
 // rotas do cliente
-import clientAuthRoutes       from './routes/clientAuthRoutes'
-import clientProfileRoutes    from './routes/clientProfileRoutes'
-import clienteRoutes          from './routes/clienteRoutes'
-import enderecoClienteRoutes  from './routes/clientAddressRoutes'
-import pedidoRoutes           from './routes/pedidoRoutes'
-import itemPedidoRoutes       from './routes/itemPedidoRoutes'
+import clientAuthRoutes      from './routes/cliente/authRoutes'  // ajustado aqui
+// import clientProfileRoutes from './routes/clientProfileRoutes' // removido, agora em authRoutes
+import clienteRoutes         from './routes/clienteRoutes'
+import enderecoClienteRoutes from './routes/clientAddressRoutes'
+import pedidoRoutes          from './routes/pedidoRoutes'
+import itemPedidoRoutes      from './routes/itemPedidoRoutes'
 import avaliacaoProdutoRoutes from './routes/avaliacaoProdutoRoutes'
 import favoritoRoutes         from './routes/favoritoRoutes'
 import avaliacaoLojaRoutes    from './routes/avaliacaoLojaRoutes'
@@ -28,10 +28,10 @@ import notificacaoRoutes      from './routes/notificacaoRoutes'
 import chamadoRoutes          from './routes/chamadoRoutes'
 
 // rotas administrativas (já existentes)
-import adminRoutes       from './routes/adminRoutes'
-import relatorioRoutes   from './routes/relatorioRoutes'
-import uploadRoutes      from './routes/uploadRoutes'
-import promocoesRoutes   from './routes/promocoes'
+import adminRoutes      from './routes/adminRoutes'
+import relatorioRoutes  from './routes/relatorioRoutes'
+import uploadRoutes     from './routes/uploadRoutes'
+import promocoesRoutes  from './routes/promocoes'
 
 dotenv.config()
 const app = express()
@@ -71,12 +71,11 @@ app.use(
 )
 app.use('/api/lojas/:lojaId/produtos', produtoRoutes)
 
-// Autenticação do cliente
+// Autenticação do cliente (register, login, forgot/reset, profile)
 app.use('/api/cliente/auth', clientAuthRoutes)
-app.use('/api/cliente/profile', clientProfileRoutes)
 
-// Rotas específicas de endereços DEPOIS do profile, ANTES do cliente genérico
-app.use('/api/clientes/:clientId/enderecos', enderecoClienteRoutes)
+// Rotas específicas de endereços DEPOIS do auth/profile, ANTES do cliente genérico
+app.use('/api/cliente/:clientId/enderecos', enderecoClienteRoutes)
 
 // Rotas genéricas de cliente
 app.use('/api/clientes', clienteRoutes)

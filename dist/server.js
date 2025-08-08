@@ -16,8 +16,8 @@ const lojaRoutes_1 = __importDefault(require("./routes/lojaRoutes"));
 const produtoRoutes_1 = __importDefault(require("./routes/produtoRoutes"));
 const variacoesRoutes_1 = __importDefault(require("./routes/variacoesRoutes"));
 // rotas do cliente
-const clientAuthRoutes_1 = __importDefault(require("./routes/clientAuthRoutes"));
-const clientProfileRoutes_1 = __importDefault(require("./routes/clientProfileRoutes"));
+const authRoutes_2 = __importDefault(require("./routes/cliente/authRoutes")); // ajustado aqui
+// import clientProfileRoutes from './routes/clientProfileRoutes' // removido, agora em authRoutes
 const clienteRoutes_1 = __importDefault(require("./routes/clienteRoutes"));
 const clientAddressRoutes_1 = __importDefault(require("./routes/clientAddressRoutes"));
 const pedidoRoutes_1 = __importDefault(require("./routes/pedidoRoutes"));
@@ -62,11 +62,10 @@ app.use('/api/lojas', lojaRoutes_1.default);
 // IMPORTANTE: montar imagens e variações antes da rota genérica de produtos
 app.use('/api/lojas/:lojaId/produtos/:produtoId/variacoes', variacoesRoutes_1.default);
 app.use('/api/lojas/:lojaId/produtos', produtoRoutes_1.default);
-// Autenticação do cliente
-app.use('/api/cliente/auth', clientAuthRoutes_1.default);
-app.use('/api/cliente/profile', clientProfileRoutes_1.default);
-// Rotas específicas de endereços DEPOIS do profile, ANTES do cliente genérico
-app.use('/api/clientes/:clientId/enderecos', clientAddressRoutes_1.default);
+// Autenticação do cliente (register, login, forgot/reset, profile)
+app.use('/api/cliente/auth', authRoutes_2.default);
+// Rotas específicas de endereços DEPOIS do auth/profile, ANTES do cliente genérico
+app.use('/api/cliente/:clientId/enderecos', clientAddressRoutes_1.default);
 // Rotas genéricas de cliente
 app.use('/api/clientes', clienteRoutes_1.default);
 // demais endpoints da loja
