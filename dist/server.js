@@ -14,12 +14,11 @@ const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
 const lojaRoutes_1 = __importDefault(require("./routes/lojaRoutes"));
 // rotas de produto, imagens e variações
 const produtoRoutes_1 = __importDefault(require("./routes/produtoRoutes"));
+const produtoImagemRoutes_1 = __importDefault(require("./routes/produtoImagemRoutes"));
 const variacoesRoutes_1 = __importDefault(require("./routes/variacoesRoutes"));
-// rotas do cliente
-const authRoutes_2 = __importDefault(require("./routes/cliente/authRoutes")); // ajustado aqui
-// import clientProfileRoutes from './routes/clientProfileRoutes' // removido, agora em authRoutes
-const clienteRoutes_1 = __importDefault(require("./routes/clienteRoutes"));
-const clientAddressRoutes_1 = __importDefault(require("./routes/clientAddressRoutes"));
+// ===== CLIENTE: manter SOMENTE o initial =====
+const initialRoutes_1 = __importDefault(require("./routes/cliente/initialRoutes"));
+// demais rotas já funcionais (fora do módulo cliente)
 const pedidoRoutes_1 = __importDefault(require("./routes/pedidoRoutes"));
 const itemPedidoRoutes_1 = __importDefault(require("./routes/itemPedidoRoutes"));
 const avaliacaoProdutoRoutes_1 = __importDefault(require("./routes/avaliacaoProdutoRoutes"));
@@ -27,7 +26,7 @@ const favoritoRoutes_1 = __importDefault(require("./routes/favoritoRoutes"));
 const avaliacaoLojaRoutes_1 = __importDefault(require("./routes/avaliacaoLojaRoutes"));
 const notificacaoRoutes_1 = __importDefault(require("./routes/notificacaoRoutes"));
 const chamadoRoutes_1 = __importDefault(require("./routes/chamadoRoutes"));
-// rotas administrativas (já existentes)
+// rotas administrativas
 const adminRoutes_1 = __importDefault(require("./routes/adminRoutes"));
 const relatorioRoutes_1 = __importDefault(require("./routes/relatorioRoutes"));
 const uploadRoutes_1 = __importDefault(require("./routes/uploadRoutes"));
@@ -58,24 +57,21 @@ app.post('/api/auth/test-body', (req, res) => {
 // Autenticação da loja
 app.use('/api/auth', authRoutes_1.default);
 app.use('/api/lojas', lojaRoutes_1.default);
+// ===== CLIENTE: SOMENTE initialRoutes (habilita /initial, /stores, /stores/:id, /produtos, /promocoes) =====
+app.use('/api/cliente', initialRoutes_1.default);
 // Produtos, imagens e variações da loja
-// IMPORTANTE: montar imagens e variações antes da rota genérica de produtos
 app.use('/api/lojas/:lojaId/produtos/:produtoId/variacoes', variacoesRoutes_1.default);
+app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens', produtoImagemRoutes_1.default);
 app.use('/api/lojas/:lojaId/produtos', produtoRoutes_1.default);
-// Autenticação do cliente (register, login, forgot/reset, profile)
-app.use('/api/cliente/auth', authRoutes_2.default);
-// Rotas específicas de endereços DEPOIS do auth/profile, ANTES do cliente genérico
-app.use('/api/cliente/:clientId/enderecos', clientAddressRoutes_1.default);
-// Rotas genéricas de cliente
-app.use('/api/clientes', clienteRoutes_1.default);
 // demais endpoints da loja
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes_1.default);
-// demais rotas genéricas do cliente
+// demais rotas genéricas do cliente (fora de /cliente)
 app.use('/api/itens-pedido', itemPedidoRoutes_1.default);
 app.use('/api/avaliacoes-produto', avaliacaoProdutoRoutes_1.default);
 app.use('/api/favoritos', favoritoRoutes_1.default);
 app.use('/api/avaliacoes-loja', avaliacaoLojaRoutes_1.default);
 app.use('/api/notificacoes', notificacaoRoutes_1.default);
+// Chamados de suporte do cliente
 app.use('/api/chamados', chamadoRoutes_1.default);
 // rotas administrativas
 app.use('/api/admins', adminRoutes_1.default);
@@ -84,10 +80,10 @@ app.use('/api/upload', uploadRoutes_1.default);
 app.use('/api/promocoes', promocoes_1.default);
 // 4) Uploads estáticos
 app.use('/uploads', express_1.default.static(path_1.default.resolve(__dirname, '..', 'uploads')));
-// Catch-all de rota não encontrada
+// 404
 app.use((_, res) => res.status(404).json({ error: 'Endpoint não encontrado.' }));
 // Error handler
-app.use((err, _, res, __) => {
+app.use((err, _req, res, _next) => {
     console.error(err);
     res.status(500).json({ error: 'Erro interno de servidor.' });
 });

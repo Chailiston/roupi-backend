@@ -6,28 +6,27 @@ import path from 'path'
 import { pool } from './database/connection'
 
 // rotas da loja (já existentes)
-import authRoutes          from './routes/authRoutes'
-import lojaRoutes          from './routes/lojaRoutes'
+import authRoutes            from './routes/authRoutes'
+import lojaRoutes            from './routes/lojaRoutes'
 
 // rotas de produto, imagens e variações
 import produtoRoutes         from './routes/produtoRoutes'
 import produtoImagemRoutes   from './routes/produtoImagemRoutes'
 import variacaoProdutoRoutes from './routes/variacoesRoutes'
 
-// rotas do cliente
-import clientAuthRoutes      from './routes/cliente/authRoutes'  // ajustado aqui
-// import clientProfileRoutes from './routes/clientProfileRoutes' // removido, agora em authRoutes
-import clienteRoutes         from './routes/clienteRoutes'
-import enderecoClienteRoutes from './routes/clientAddressRoutes'
-import pedidoRoutes          from './routes/pedidoRoutes'
-import itemPedidoRoutes      from './routes/itemPedidoRoutes'
+// ===== CLIENTE: manter SOMENTE o initial =====
+import initialRoutes         from './routes/cliente/initialRoutes'
+
+// demais rotas já funcionais (fora do módulo cliente)
+import pedidoRoutes           from './routes/pedidoRoutes'
+import itemPedidoRoutes       from './routes/itemPedidoRoutes'
 import avaliacaoProdutoRoutes from './routes/avaliacaoProdutoRoutes'
 import favoritoRoutes         from './routes/favoritoRoutes'
 import avaliacaoLojaRoutes    from './routes/avaliacaoLojaRoutes'
 import notificacaoRoutes      from './routes/notificacaoRoutes'
-import chamadoRoutes          from './routes/chamadoRoutes'
+import chamadoRoutesCliente   from './routes/chamadoRoutes'
 
-// rotas administrativas (já existentes)
+// rotas administrativas
 import adminRoutes      from './routes/adminRoutes'
 import relatorioRoutes  from './routes/relatorioRoutes'
 import uploadRoutes     from './routes/uploadRoutes'
@@ -63,54 +62,42 @@ app.post('/api/auth/test-body', (req, res) => {
 app.use('/api/auth', authRoutes)
 app.use('/api/lojas', lojaRoutes)
 
+// ===== CLIENTE: SOMENTE initialRoutes (habilita /initial, /stores, /stores/:id, /produtos, /promocoes) =====
+app.use('/api/cliente', initialRoutes)
+
 // Produtos, imagens e variações da loja
-// IMPORTANTE: montar imagens e variações antes da rota genérica de produtos
-app.use(
-  '/api/lojas/:lojaId/produtos/:produtoId/variacoes',
-  variacaoProdutoRoutes
-)
-app.use('/api/lojas/:lojaId/produtos', produtoRoutes)
-
-// Autenticação do cliente (register, login, forgot/reset, profile)
-app.use('/api/cliente/auth', clientAuthRoutes)
-
-// Rotas específicas de endereços DEPOIS do auth/profile, ANTES do cliente genérico
-app.use('/api/cliente/:clientId/enderecos', enderecoClienteRoutes)
-
-// Rotas genéricas de cliente
-app.use('/api/clientes', clienteRoutes)
+app.use('/api/lojas/:lojaId/produtos/:produtoId/variacoes', variacaoProdutoRoutes)
+app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens',   produtoImagemRoutes)
+app.use('/api/lojas/:lojaId/produtos',                      produtoRoutes)
 
 // demais endpoints da loja
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes)
 
-// demais rotas genéricas do cliente
-app.use('/api/itens-pedido', itemPedidoRoutes)
+// demais rotas genéricas do cliente (fora de /cliente)
+app.use('/api/itens-pedido',       itemPedidoRoutes)
 app.use('/api/avaliacoes-produto', avaliacaoProdutoRoutes)
-app.use('/api/favoritos', favoritoRoutes)
-app.use('/api/avaliacoes-loja', avaliacaoLojaRoutes)
-app.use('/api/notificacoes', notificacaoRoutes)
-app.use('/api/chamados', chamadoRoutes)
+app.use('/api/favoritos',          favoritoRoutes)
+app.use('/api/avaliacoes-loja',    avaliacaoLojaRoutes)
+app.use('/api/notificacoes',       notificacaoRoutes)
+
+// Chamados de suporte do cliente
+app.use('/api/chamados', chamadoRoutesCliente)
 
 // rotas administrativas
-app.use('/api/admins', adminRoutes)
+app.use('/api/admins',     adminRoutes)
 app.use('/api/relatorios', relatorioRoutes)
-app.use('/api/upload', uploadRoutes)
-app.use('/api/promocoes', promocoesRoutes)
+app.use('/api/upload',     uploadRoutes)
+app.use('/api/promocoes',  promocoesRoutes)
 
 // 4) Uploads estáticos
-app.use(
-  '/uploads',
-  express.static(path.resolve(__dirname, '..', 'uploads'))
-)
+app.use('/uploads', express.static(path.resolve(__dirname, '..', 'uploads')))
 
-// Catch-all de rota não encontrada
-app.use((_, res) =>
-  res.status(404).json({ error: 'Endpoint não encontrado.' })
-)
+// 404
+app.use((_, res) => res.status(404).json({ error: 'Endpoint não encontrado.' }))
 
 // Error handler
 app.use(
-  (err: any, _: express.Request, res: express.Response, __: express.NextFunction) => {
+  (err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     console.error(err)
     res.status(500).json({ error: 'Erro interno de servidor.' })
   }
