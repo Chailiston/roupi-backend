@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import { pool } from '../../database/connection'
 
-// helpers
+// ===================== Helpers =====================
 function toInt(v: any, def: number) {
   const n = parseInt(String(v), 10)
   return Number.isFinite(n) && n > 0 ? n : def
@@ -13,27 +13,144 @@ function toBoolOrNull(v: any) {
   if (s === 'false') return false
   return null
 }
+function pushParam(params: any[], v: any) {
+  params.push(v)
+  return `$${params.length}`
+}
+function toNum(v: any): number | null {
+  if (v === undefined || v === null || v === '') return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+function toNumDef(v: any, def: number): number {
+  const n = toNum(v)
+  return n === null ? def : n
+}
 
-/**
- * GET /api/cliente/initial
- * retorna: categorias, lojas em destaque, e **promocoes** (top N) para reduzir chamadas
- */
-export async function getInitial(_req: Request, res: Response) {
+/** Calcula bounding box aproximado em graus para um raio em km */
+function makeBBox(lat: number, lng: number, radiusKm: number) {
+  const dLat = radiusKm / 110.574 // ~km/° lat
+  const cosLat = Math.cos(lat * Math.PI / 180)
+  const kmPerDegLon = 111.320 * Math.max(cosLat, 0.000001) // evita div/0
+  const dLng = radiusKm / kmPerDegLon
+  return {
+    minLat: lat - dLat,
+    maxLat: lat + dLat,
+    minLng: lng - dLng,
+    maxLng: lng + dLng,
+  }
+}
+
+// ===================================================
+// GET /api/cliente/initial?lat=&lng=&radius_km=&limit=
+// categorias, lojas (com filtro por raio se lat/lng) e promoções
+// ===================================================
+export async function getInitial(req: Request, res: Response) {
   try {
-    const lojasQ = await pool.query(
-      `SELECT l.id, l.nome, l.logo_url, l.endereco_cidade, l.endereco_estado,
-              COALESCE(ROUND(AVG(al.nota)::numeric, 2), 0)    AS rating_avg,
-              COUNT(al.id)                                    AS rating_count,
-              COUNT(DISTINCT p.id)                            AS total_produtos
-         FROM lojas l
-         LEFT JOIN avaliacoes_loja al ON al.id_loja = l.id
-         LEFT JOIN produtos p        ON p.id_loja = l.id AND p.ativo = true
+    const q = req.query as any
+    const lat = toNum(q.lat)
+    const lng = toNum(q.lng)
+    const hasPoint = Number.isFinite(lat) && Number.isFinite(lng)
+    const limit = toInt(q.limit, 12)
+    const radiusKm = toNumDef(q.radius_km, 50) // padrão: 50 km
+
+    const baseCTE = `
+      WITH rat AS (
+        SELECT l.id,
+               COALESCE(ROUND(AVG(al.nota)::numeric, 2), 0) AS rating_avg,
+               COUNT(al.id)                                  AS rating_count
+          FROM lojas l
+          LEFT JOIN avaliacoes_loja al ON al.id_loja = l.id
+         GROUP BY l.id
+      ),
+      prod AS (
+        SELECT p.id_loja AS id, COUNT(*) AS total_produtos
+          FROM produtos p
+         WHERE p.ativo = true
+         GROUP BY p.id_loja
+      )
+    `
+
+    let lojasSql = ''
+    const lojasParams: any[] = []
+
+    if (hasPoint) {
+      // bounding box
+      const bbox = makeBBox(lat as number, lng as number, radiusKm)
+      const pLat   = pushParam(lojasParams, lat)
+      const pLng   = pushParam(lojasParams, lng)
+      const pRad   = pushParam(lojasParams, radiusKm)
+      const pMinLa = pushParam(lojasParams, bbox.minLat)
+      const pMaxLa = pushParam(lojasParams, bbox.maxLat)
+      const pMinLo = pushParam(lojasParams, bbox.minLng)
+      const pMaxLo = pushParam(lojasParams, bbox.maxLng)
+      const pLimit = pushParam(lojasParams, limit)
+
+      lojasSql = `
+        ${baseCTE},
+        bbox AS (
+          SELECT ${pLat}::numeric AS lat,
+                 ${pLng}::numeric AS lng,
+                 ${pRad}::numeric AS radius_km,
+                 ${pMinLa}::numeric AS min_lat,
+                 ${pMaxLa}::numeric AS max_lat,
+                 ${pMinLo}::numeric AS min_lng,
+                 ${pMaxLo}::numeric AS max_lng
+        ),
+        base AS (
+          SELECT
+            l.id, l.nome, l.logo_url, l.endereco_cidade, l.endereco_estado, l.endereco_cep,
+            l.latitude, l.longitude,
+            COALESCE(rat.rating_avg, 0)      AS rating_avg,
+            COALESCE(rat.rating_count, 0)    AS rating_count,
+            COALESCE(prod.total_produtos, 0) AS total_produtos,
+            ROUND((
+              6371 * 2 * ASIN(SQRT(
+                POWER(SIN((( (SELECT lat FROM bbox) - l.latitude) * pi() / 180) / 2), 2) +
+                COS(l.latitude * pi() / 180) * COS((SELECT lat FROM bbox) * pi() / 180) *
+                POWER(SIN((((SELECT lng FROM bbox) - l.longitude) * pi() / 180) / 2), 2)
+              ))
+            )::numeric, 1) AS distance_km
+          FROM lojas l
+          LEFT JOIN rat  ON rat.id  = l.id
+          LEFT JOIN prod ON prod.id = l.id
+          CROSS JOIN bbox
+          WHERE l.ativo = true
+            AND l.latitude  IS NOT NULL AND l.longitude IS NOT NULL
+            AND l.latitude  BETWEEN -90 AND 90
+            AND l.longitude BETWEEN -180 AND 180
+            AND l.latitude  BETWEEN (SELECT min_lat FROM bbox) AND (SELECT max_lat FROM bbox)
+            AND l.longitude BETWEEN (SELECT min_lng FROM bbox) AND (SELECT max_lng FROM bbox)
+        )
+        SELECT *
+          FROM base
+         WHERE distance_km <= (SELECT radius_km FROM bbox)
+         ORDER BY distance_km ASC, rating_avg DESC, rating_count DESC
+         LIMIT ${pLimit}
+      `
+    } else {
+      const pLimit = pushParam(lojasParams, limit)
+      lojasSql = `
+        ${baseCTE}
+        SELECT
+          l.id, l.nome, l.logo_url, l.endereco_cidade, l.endereco_estado, l.endereco_cep,
+          l.latitude, l.longitude,
+          COALESCE(rat.rating_avg, 0)      AS rating_avg,
+          COALESCE(rat.rating_count, 0)    AS rating_count,
+          COALESCE(prod.total_produtos, 0) AS total_produtos,
+          NULL::numeric AS distance_km
+        FROM lojas l
+        LEFT JOIN rat  ON rat.id  = l.id
+        LEFT JOIN prod ON prod.id = l.id
         WHERE l.ativo = true
-        GROUP BY l.id
-        ORDER BY (CASE WHEN COUNT(al.id)=0 THEN 0 ELSE AVG(al.nota) END) DESC,
-                 COUNT(al.id) DESC
-        LIMIT 12`
-    )
+        ORDER BY
+          (CASE WHEN COALESCE(rat.rating_count,0)=0 THEN 0 ELSE COALESCE(rat.rating_avg,0) END) DESC,
+          COALESCE(rat.rating_count,0) DESC
+        LIMIT ${pLimit}
+      `
+    }
+
+    const lojasQ = await pool.query(lojasSql, lojasParams)
 
     const categoriasQ = await pool.query(
       `SELECT DISTINCT categoria
@@ -55,6 +172,7 @@ export async function getInitial(_req: Request, res: Response) {
               p.id               AS id_produto,
               p.id_loja          AS id_loja,
               p.nome             AS nome_produto,
+              p.preco_base       AS preco_base,
               img.url            AS imagem_url,
               COALESCE(pp.preco_promocional, p.preco_base) AS preco_atual
          FROM promocoes pr
@@ -75,7 +193,7 @@ export async function getInitial(_req: Request, res: Response) {
             LIMIT 1
          ) pp ON TRUE
         WHERE pr.ativo = true
-          AND now() BETWEEN pr.data_inicio AND pr.data_fim
+          AND now() BETWEEN pr.data_inicio END pr.data_fim
         ORDER BY p.id, pr.data_inicio DESC
         LIMIT 12`
     )
@@ -92,28 +210,32 @@ export async function getInitial(_req: Request, res: Response) {
   }
 }
 
-/**
- * GET /api/cliente/stores?name=&address=&categoria=&page=&limit=&sort=
- * sort: "name" | "rating" | "orders" (padrão: rating)
- * **NOVO**: filtro por categoria (ILIKE) sobre produtos ativos da loja
- */
+// ===================================================
+// GET /api/cliente/stores?name=&address=&categoria=&page=&limit=&sort=&lat=&lng=&radius_km=
+// Lista de lojas (com filtro por raio quando lat/lng presentes)
+// ===================================================
 export async function listStores(req: Request, res: Response) {
   try {
-    const { name = '', address = '', sort = 'rating', categoria = '' } = req.query as any
-    const page = toInt((req.query as any).page, 1)
-    const limit = toInt((req.query as any).limit, 20)
+    const q = req.query as any
+    const { name = '', address = '', sort = 'rating', categoria = '' } = q
+    const page = toInt(q.page, 1)
+    const limit = toInt(q.limit, 20)
     const offset = (page - 1) * limit
 
-    const orderBy =
+    const qlat = toNum(q.lat)
+    const qlng = toNum(q.lng)
+    const hasPoint = Number.isFinite(qlat) && Number.isFinite(qlng)
+    const radiusKm = toNumDef(q.radius_km, 50) // padrão: 50 km
+
+    // usado apenas no branch SEM lat/lng (lá as aliases existem)
+    const orderPref =
       String(sort).toLowerCase() === 'name'
         ? `l.nome ASC`
         : String(sort).toLowerCase() === 'orders'
         ? `COALESCE(ped.qtd_pedidos,0) DESC, l.nome ASC`
         : `COALESCE(rat.rating_avg,0) DESC, COALESCE(rat.rating_count,0) DESC, l.nome ASC`
 
-    // Usamos EXISTS para evitar duplicar lojas quando houver muitos produtos na categoria
-    const { rows } = await pool.query(
-      `
+    const baseCTE = `
       WITH rat AS (
         SELECT l.id,
                COALESCE(ROUND(AVG(al.nota)::numeric,2),0) AS rating_avg,
@@ -128,32 +250,123 @@ export async function listStores(req: Request, res: Response) {
           LEFT JOIN pedidos ON pedidos.id_loja = l.id
          GROUP BY l.id
       )
-      SELECT l.id, l.nome, l.logo_url, l.endereco_cidade, l.endereco_estado, l.ativo,
-             COALESCE(rat.rating_avg,0)   AS rating_avg,
-             COALESCE(rat.rating_count,0) AS rating_count,
-             COALESCE(ped.qtd_pedidos,0)  AS pedidos_total
+    `
+
+    const params: any[] = []
+    const pName = pushParam(params, String(name))
+    const pAddress = pushParam(params, String(address))
+    const pCategoria = pushParam(params, String(categoria))
+
+    let sql = ''
+    if (hasPoint) {
+      const bbox = makeBBox(qlat as number, qlng as number, radiusKm)
+      const pLat   = pushParam(params, qlat)
+      const pLng   = pushParam(params, qlng)
+      const pRad   = pushParam(params, radiusKm)
+      const pMinLa = pushParam(params, bbox.minLat)
+      const pMaxLa = pushParam(params, bbox.maxLat)
+      const pMinLo = pushParam(params, bbox.minLng)
+      const pMaxLo = pushParam(params, bbox.maxLng)
+      const pLimit = pushParam(params, limit)
+      const pOffset = pushParam(params, offset)
+
+      // IMPORTANTE: aliases disponíveis no SELECT * FROM base
+      const orderPrefBase =
+        String(sort).toLowerCase() === 'name'
+          ? `nome ASC`
+          : String(sort).toLowerCase() === 'orders'
+          ? `pedidos_total DESC, nome ASC`
+          : `rating_avg DESC, rating_count DESC, nome ASC`
+
+      sql = `
+        ${baseCTE},
+        bbox AS (
+          SELECT ${pLat}::numeric AS lat,
+                 ${pLng}::numeric AS lng,
+                 ${pRad}::numeric AS radius_km,
+                 ${pMinLa}::numeric AS min_lat,
+                 ${pMaxLa}::numeric AS max_lat,
+                 ${pMinLo}::numeric AS min_lng,
+                 ${pMaxLo}::numeric AS max_lng
+        ),
+        base AS (
+          SELECT
+            l.id, l.nome, l.logo_url, l.endereco_cidade, l.endereco_estado, l.endereco_cep,
+            l.latitude, l.longitude,
+            COALESCE(rat.rating_avg,0)   AS rating_avg,
+            COALESCE(rat.rating_count,0) AS rating_count,
+            COALESCE(ped.qtd_pedidos,0)  AS pedidos_total,
+            ROUND((
+              6371 * 2 * ASIN(SQRT(
+                POWER(SIN((( (SELECT lat FROM bbox) - l.latitude) * pi() / 180) / 2), 2) +
+                COS(l.latitude * pi() / 180) * COS((SELECT lat FROM bbox) * pi() / 180) *
+                POWER(SIN((((SELECT lng FROM bbox) - l.longitude) * pi() / 180) / 2), 2)
+              ))
+            )::numeric, 1) AS distance_km
+          FROM lojas l
+          LEFT JOIN rat ON rat.id = l.id
+          LEFT JOIN ped ON ped.id = l.id
+          CROSS JOIN bbox
+          WHERE l.ativo = true
+            AND (${pName} = '' OR l.nome ILIKE '%'||${pName}||'%')
+            AND (${pAddress} = '' OR
+                 l.endereco_rua ILIKE '%'||${pAddress}||'%' OR
+                 l.endereco_bairro ILIKE '%'||${pAddress}||'%' OR
+                 l.endereco_cidade ILIKE '%'||${pAddress}||'%' OR
+                 l.endereco_estado ILIKE '%'||${pAddress}||'%')
+            AND (${pCategoria} = '' OR EXISTS (
+                 SELECT 1 FROM produtos p
+                  WHERE p.id_loja = l.id
+                    AND p.ativo = true
+                    AND p.categoria ILIKE '%'||${pCategoria}||'%'
+            ))
+            AND l.latitude  IS NOT NULL AND l.longitude IS NOT NULL
+            AND l.latitude  BETWEEN -90 AND 90
+            AND l.longitude BETWEEN -180 AND 180
+            AND l.latitude  BETWEEN (SELECT min_lat FROM bbox) AND (SELECT max_lat FROM bbox)
+            AND l.longitude BETWEEN (SELECT min_lng FROM bbox) AND (SELECT max_lng FROM bbox)
+        )
+        SELECT *
+          FROM base
+         WHERE distance_km <= (SELECT radius_km FROM bbox)
+         ORDER BY distance_km ASC, ${orderPrefBase}
+         LIMIT ${pLimit} OFFSET ${pOffset}
+      `
+    } else {
+      const pLimit = pushParam(params, limit)
+      const pOffset = pushParam(params, offset)
+
+      sql = `
+        ${baseCTE}
+        SELECT
+          l.id, l.nome, l.logo_url, l.endereco_cidade, l.endereco_estado, l.endereco_cep,
+          l.latitude, l.longitude,
+          COALESCE(rat.rating_avg,0)   AS rating_avg,
+          COALESCE(rat.rating_count,0) AS rating_count,
+          COALESCE(ped.qtd_pedidos,0)  AS pedidos_total,
+          NULL::numeric AS distance_km
         FROM lojas l
         LEFT JOIN rat ON rat.id = l.id
         LEFT JOIN ped ON ped.id = l.id
-       WHERE l.ativo = true
-         AND ($1 = '' OR l.nome ILIKE '%'||$1||'%')
-         AND ($2 = '' OR
-              l.endereco_rua ILIKE '%'||$2||'%' OR
-              l.endereco_bairro ILIKE '%'||$2||'%' OR
-              l.endereco_cidade ILIKE '%'||$2||'%' OR
-              l.endereco_estado ILIKE '%'||$2||'%')
-         AND ($3 = '' OR EXISTS (
-              SELECT 1 FROM produtos p
-               WHERE p.id_loja = l.id
-                 AND p.ativo = true
-                 AND p.categoria ILIKE '%'||$3||'%'
-         ))
-       ORDER BY ${orderBy}
-       LIMIT $4 OFFSET $5
-      `,
-      [name, address, categoria, limit, offset]
-    )
+        WHERE l.ativo = true
+          AND (${pName} = '' OR l.nome ILIKE '%'||${pName}||'%')
+          AND (${pAddress} = '' OR
+               l.endereco_rua ILIKE '%'||${pAddress}||'%' OR
+               l.endereco_bairro ILIKE '%'||${pAddress}||'%' OR
+               l.endereco_cidade ILIKE '%'||${pAddress}||'%' OR
+               l.endereco_estado ILIKE '%'||${pAddress}||'%')
+          AND (${pCategoria} = '' OR EXISTS (
+               SELECT 1 FROM produtos p
+                WHERE p.id_loja = l.id
+                  AND p.ativo = true
+                  AND p.categoria ILIKE '%'||${pCategoria}||'%'
+          ))
+        ORDER BY ${orderPref}
+        LIMIT ${pLimit} OFFSET ${pOffset}
+      `
+    }
 
+    const { rows } = await pool.query(sql, params)
     return res.json({ page, limit, items: rows })
   } catch (err) {
     console.error('listStores ->', err)
@@ -161,10 +374,9 @@ export async function listStores(req: Request, res: Response) {
   }
 }
 
-/**
- * GET /api/cliente/stores/:id
- * -> dados da loja + produtos ativos + promoções ativas
- */
+// ===================================================
+// GET /api/cliente/stores/:id
+// ===================================================
 export async function storeDetails(req: Request, res: Response) {
   try {
     const { id } = req.params
@@ -232,9 +444,9 @@ export async function storeDetails(req: Request, res: Response) {
   }
 }
 
-/**
- * GET /api/cliente/produtos?search=&active=&lojaId=&page=&limit=
- */
+// ===================================================
+// GET /api/cliente/produtos?search=&active=&lojaId=&page=&limit=
+// ===================================================
 export async function searchProducts(req: Request, res: Response) {
   try {
     const { search = '', lojaId } = req.query as any
@@ -277,10 +489,9 @@ export async function searchProducts(req: Request, res: Response) {
   }
 }
 
-/**
- * GET /api/cliente/promocoes
- * (continua disponível caso a Home queira mais itens que o /initial retorna)
- */
+// ===================================================
+// GET /api/cliente/promocoes
+// ===================================================
 export async function listPromotions(_req: Request, res: Response) {
   try {
     const { rows } = await pool.query(
@@ -288,6 +499,7 @@ export async function listPromotions(_req: Request, res: Response) {
               p.id               AS id_produto,
               p.id_loja          AS id_loja,
               p.nome             AS nome_produto,
+              p.preco_base       AS preco_base,
               img.url            AS imagem_url,
               COALESCE(pp.preco_promocional, p.preco_base) AS preco_atual
          FROM promocoes pr
