@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import { pool } from '../../database/connection'
 
-// Funções auxiliares (Helpers) - Copiadas para este ficheiro para o manter independente
+// Funções auxiliares (Helpers)
 function toInt(v: any, def: number) {
   const n = parseInt(String(v), 10)
   return Number.isFinite(n) && n > 0 ? n : def
@@ -36,18 +36,22 @@ export async function getProductDetails(req: Request, res: Response) {
         p.descricao,
         p.categoria,
         p.preco_base,
+        p.imagem_url, -- <<< CORREÇÃO: ESTA LINHA ESTAVA A FALTAR
         p.ativo,
         COALESCE(pp.preco_promocional, p.preco_base) AS preco_atual,
+        
         (
           SELECT json_agg(json_build_object('id', pi.id, 'url', pi.url, 'ordem', pi.ordem) ORDER BY pi.ordem)
           FROM produtos_imagens pi
           WHERE pi.id_produto = p.id
         ) as imagens,
+        
         (
           SELECT json_agg(json_build_object('id', vp.id, 'tamanho', vp.tamanho, 'cor', vp.cor, 'preco_extra', vp.preco_extra, 'estoque', vp.estoque))
           FROM variacoes_produto vp
           WHERE vp.id_produto = p.id AND vp.ativo = true
         ) as variacoes,
+
         (
           SELECT json_agg(json_build_object(
               'id', ap.id,
@@ -60,6 +64,7 @@ export async function getProductDetails(req: Request, res: Response) {
           JOIN clientes c ON ap.id_cliente = c.id
           WHERE ap.id_produto = p.id AND ap.status = 'approved'
         ) as avaliacoes
+
       FROM produtos p
       JOIN lojas l ON p.id_loja = l.id
       LEFT JOIN LATERAL (
@@ -104,7 +109,8 @@ export async function searchProducts(req: Request, res: Response) {
 
     const { rows } = await pool.query(
       `SELECT p.id, p.id_loja, p.nome, p.descricao, p.categoria, p.preco_base, p.ativo,
-              img.url AS imagem_url,
+              -- Usa a imagem principal do produto como fallback se não houver imagem na galeria
+              COALESCE(img.url, p.imagem_url) AS imagem_url,
               COALESCE(pp.preco_promocional, p.preco_base) AS preco_atual
          FROM produtos p
          LEFT JOIN LATERAL (
