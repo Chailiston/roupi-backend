@@ -116,6 +116,7 @@ export async function searchStores(req: Request, res: Response) {
     try {
         const q = req.query as any;
         const searchTerm = q.q || '';
+        const sort = q.sort || 'relevance'; // NOVO: Adicionado parâmetro de ordenação
         const page = toInt(q.page, 1);
         const limit = toInt(q.limit, 20);
         const offset = (page - 1) * limit;
@@ -126,19 +127,30 @@ export async function searchStores(req: Request, res: Response) {
 
         const params: any[] = [];
         let whereClauses: string[] = ['l.ativo = true'];
-        let orderByClause = 'ORDER BY rating_avg DESC, l.nome ASC';
+        let orderByClause = '';
         let distanceCalc = 'NULL::numeric AS distance_km';
 
         if (hasPoint) {
             const pLat = pushParam(params, lat);
             const pLng = pushParam(params, lng);
             distanceCalc = haversineDistance.replace(/\$_LAT_/g, pLat).replace(/\$_LNG_/g, pLng) + ' AS distance_km';
-            orderByClause = 'ORDER BY distance_km ASC, rating_avg DESC';
         }
         
         if (searchTerm) {
             const pSearch = pushParam(params, `%${searchTerm}%`);
             whereClauses.push(`l.nome ILIKE ${pSearch}`);
+        }
+
+        // NOVO: Lógica de ordenação para lojas
+        switch (sort) {
+            case 'rating':
+                orderByClause = 'ORDER BY rating_avg DESC, l.nome ASC';
+                break;
+            case 'distance':
+                orderByClause = hasPoint ? 'ORDER BY distance_km ASC, rating_avg DESC' : 'ORDER BY l.nome ASC';
+                break;
+            default: // relevance
+                orderByClause = hasPoint ? 'ORDER BY distance_km ASC, rating_avg DESC' : 'ORDER BY rating_avg DESC, l.nome ASC';
         }
 
         const sql = `
