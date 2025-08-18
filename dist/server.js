@@ -19,7 +19,8 @@ const pedidoRoutes_1 = __importDefault(require("./routes/pedidoRoutes"));
 const promocoes_1 = __importDefault(require("./routes/promocoes"));
 // --- ROTAS DO CLIENTE (ORGANIZADAS) ---
 const initialRoutes_1 = __importDefault(require("./routes/cliente/initialRoutes"));
-const productRoutes_1 = __importDefault(require("./routes/cliente/productRoutes")); // 1. IMPORTA O NOVO FICHEIRO
+const productRoutes_1 = __importDefault(require("./routes/cliente/productRoutes"));
+const searchRoutes_1 = __importDefault(require("./routes/cliente/searchRoutes")); // 1. IMPORTA O NOVO FICHEIRO
 // --- ROTAS GENÉRICAS E ADMIN ---
 const itemPedidoRoutes_1 = __importDefault(require("./routes/itemPedidoRoutes"));
 const avaliacaoProdutoRoutes_1 = __importDefault(require("./routes/avaliacaoProdutoRoutes"));
@@ -56,7 +57,8 @@ app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens', produtoImagemRoutes_1.
 app.use('/api/lojas/:lojaId/produtos', produtoRoutes_1.default);
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes_1.default);
 // API do Cliente
-// 2. DIZ AO EXPRESS PARA USAR O NOVO FICHEIRO PARA ROTAS /produtos
+// 2. ADICIONA A NOVA ROTA DE PESQUISA (é importante que venha antes da rota mais genérica)
+app.use('/api/cliente/search', searchRoutes_1.default);
 app.use('/api/cliente/produtos', productRoutes_1.default);
 app.use('/api/cliente', initialRoutes_1.default); // Esta rota agora lida com o resto (/initial, /stores, etc.)
 // Rotas Genéricas e Admin

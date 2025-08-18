@@ -16,7 +16,8 @@ import promocoesRoutes from './routes/promocoes'
 
 // --- ROTAS DO CLIENTE (ORGANIZADAS) ---
 import initialRoutes from './routes/cliente/initialRoutes'
-import productRoutesCliente from './routes/cliente/productRoutes' // 1. IMPORTA O NOVO FICHEIRO
+import productRoutesCliente from './routes/cliente/productRoutes'
+import searchRoutesCliente from './routes/cliente/searchRoutes' // 1. IMPORTA O NOVO FICHEIRO
 
 // --- ROTAS GENÉRICAS E ADMIN ---
 import itemPedidoRoutes from './routes/itemPedidoRoutes'
@@ -59,7 +60,8 @@ app.use('/api/lojas/:lojaId/produtos',                      produtoRoutes)
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes)
 
 // API do Cliente
-// 2. DIZ AO EXPRESS PARA USAR O NOVO FICHEIRO PARA ROTAS /produtos
+// 2. ADICIONA A NOVA ROTA DE PESQUISA (é importante que venha antes da rota mais genérica)
+app.use('/api/cliente/search', searchRoutesCliente) 
 app.use('/api/cliente/produtos', productRoutesCliente) 
 app.use('/api/cliente', initialRoutes) // Esta rota agora lida com o resto (/initial, /stores, etc.)
 
