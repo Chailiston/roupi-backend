@@ -20,7 +20,8 @@ const promocoes_1 = __importDefault(require("./routes/promocoes"));
 // --- ROTAS DO CLIENTE (ORGANIZADAS) ---
 const initialRoutes_1 = __importDefault(require("./routes/cliente/initialRoutes"));
 const productRoutes_1 = __importDefault(require("./routes/cliente/productRoutes"));
-const searchRoutes_1 = __importDefault(require("./routes/cliente/searchRoutes")); // 1. IMPORTA O NOVO FICHEIRO
+const searchRoutes_1 = __importDefault(require("./routes/cliente/searchRoutes"));
+const storeRoutes_1 = __importDefault(require("./routes/cliente/storeRoutes")); // ➕ 1. IMPORTA AS NOVAS ROTAS DA LOJA
 // --- ROTAS GENÉRICAS E ADMIN ---
 const itemPedidoRoutes_1 = __importDefault(require("./routes/itemPedidoRoutes"));
 const avaliacaoProdutoRoutes_1 = __importDefault(require("./routes/avaliacaoProdutoRoutes"));
@@ -57,10 +58,10 @@ app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens', produtoImagemRoutes_1.
 app.use('/api/lojas/:lojaId/produtos', produtoRoutes_1.default);
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes_1.default);
 // API do Cliente
-// 2. ADICIONA A NOVA ROTA DE PESQUISA (é importante que venha antes da rota mais genérica)
 app.use('/api/cliente/search', searchRoutes_1.default);
 app.use('/api/cliente/produtos', productRoutes_1.default);
-app.use('/api/cliente', initialRoutes_1.default); // Esta rota agora lida com o resto (/initial, /stores, etc.)
+app.use('/api/cliente/lojas', storeRoutes_1.default); // ➕ 2. REGISTRA A NOVA ROTA
+app.use('/api/cliente', initialRoutes_1.default);
 // Rotas Genéricas e Admin
 app.use('/api/itens-pedido', itemPedidoRoutes_1.default);
 app.use('/api/avaliacoes-produto', avaliacaoProdutoRoutes_1.default);

@@ -17,7 +17,8 @@ import promocoesRoutes from './routes/promocoes'
 // --- ROTAS DO CLIENTE (ORGANIZADAS) ---
 import initialRoutes from './routes/cliente/initialRoutes'
 import productRoutesCliente from './routes/cliente/productRoutes'
-import searchRoutesCliente from './routes/cliente/searchRoutes' // 1. IMPORTA O NOVO FICHEIRO
+import searchRoutesCliente from './routes/cliente/searchRoutes'
+import storeRoutesCliente from './routes/cliente/storeRoutes' // ➕ 1. IMPORTA AS NOVAS ROTAS DA LOJA
 
 // --- ROTAS GENÉRICAS E ADMIN ---
 import itemPedidoRoutes from './routes/itemPedidoRoutes'
@@ -60,10 +61,10 @@ app.use('/api/lojas/:lojaId/produtos',                      produtoRoutes)
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes)
 
 // API do Cliente
-// 2. ADICIONA A NOVA ROTA DE PESQUISA (é importante que venha antes da rota mais genérica)
 app.use('/api/cliente/search', searchRoutesCliente) 
 app.use('/api/cliente/produtos', productRoutesCliente) 
-app.use('/api/cliente', initialRoutes) // Esta rota agora lida com o resto (/initial, /stores, etc.)
+app.use('/api/cliente/lojas', storeRoutesCliente) // ➕ 2. REGISTRA A NOVA ROTA
+app.use('/api/cliente', initialRoutes)
 
 // Rotas Genéricas e Admin
 app.use('/api/itens-pedido',       itemPedidoRoutes)
