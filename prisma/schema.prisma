@@ -1,0 +1,395 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model admins {
+  id         Int          @id @default(autoincrement())
+  nome       String       @db.VarChar(100)
+  email      String       @unique @db.VarChar(100)
+  senha_hash String
+  telefone   String?      @db.VarChar(20)
+  perfil     String?      @default("admin") @db.VarChar(20)
+  ativo      Boolean?     @default(true)
+  criado_em  DateTime?    @default(now()) @db.Timestamp(6)
+  logs_admin logs_admin[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model avaliacoes_loja {
+  id            Int       @id @default(autoincrement())
+  id_cliente    Int
+  id_loja       Int
+  nota          Int?
+  comentario    String?
+  criado_em     DateTime? @default(now()) @db.Timestamp(6)
+  status        String?   @default("pending") @db.VarChar(20)
+  resposta_loja String?
+  clientes      clientes  @relation(fields: [id_cliente], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  lojas         lojas     @relation(fields: [id_loja], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model avaliacoes_produto {
+  id            Int       @id @default(autoincrement())
+  id_cliente    Int
+  id_produto    Int
+  nota          Int?
+  comentario    String?
+  criado_em     DateTime? @default(now()) @db.Timestamp(6)
+  status        String?   @default("pending") @db.VarChar(20)
+  resposta_loja String?
+  clientes      clientes  @relation(fields: [id_cliente], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  produtos      produtos  @relation(fields: [id_produto], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model chamados {
+  id                Int                 @id @default(autoincrement())
+  id_cliente        Int
+  id_loja           Int?
+  assunto           String              @db.VarChar(100)
+  status            String?             @default("aberto") @db.VarChar(20)
+  criado_em         DateTime?           @default(now()) @db.Timestamp(6)
+  atualizado_em     DateTime?           @default(now()) @db.Timestamp(6)
+  clientes          clientes            @relation(fields: [id_cliente], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  lojas             lojas?              @relation(fields: [id_loja], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  mensagens_chamado mensagens_chamado[]
+}
+
+model clientes {
+  id                 Int                  @id @default(autoincrement())
+  nome               String               @db.VarChar(100)
+  email              String               @unique @db.VarChar(100)
+  telefone           String?              @db.VarChar(20)
+  cpf                String?              @unique @db.VarChar(14)
+  senha_hash         String
+  criado_em          DateTime?            @default(now()) @db.Timestamp(6)
+  atualizado_em      DateTime?            @default(now()) @db.Timestamp(6)
+  avaliacoes_loja    avaliacoes_loja[]
+  avaliacoes_produto avaliacoes_produto[]
+  chamados           chamados[]
+  enderecos_cliente  enderecos_cliente[]
+  favoritos          favoritos[]
+  notificacoes       notificacoes[]
+  pedidos            pedidos[]
+  tokens_push        tokens_push[]
+}
+
+model dados_bancarios_loja {
+  id                   Int       @id @default(autoincrement())
+  id_loja              Int
+  banco                String?   @db.VarChar(100)
+  agencia              String?   @db.VarChar(20)
+  conta                String?   @db.VarChar(30)
+  tipo_conta           String?   @db.VarChar(20)
+  titular              String?   @db.VarChar(100)
+  documento_titular    String?   @db.VarChar(20)
+  criado_em            DateTime? @default(now()) @db.Timestamp(6)
+  pagamento_fornecedor String?   @db.VarChar(30)
+  pagamento_account_id String?   @db.VarChar(100)
+  lojas                lojas     @relation(fields: [id_loja], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model enderecos_cliente {
+  id          Int       @id @default(autoincrement())
+  id_cliente  Int
+  apelido     String?   @db.VarChar(30)
+  rua         String?   @db.VarChar(100)
+  numero      String?   @db.VarChar(10)
+  complemento String?   @db.VarChar(50)
+  bairro      String?   @db.VarChar(50)
+  cidade      String?   @db.VarChar(50)
+  estado      String?   @db.VarChar(2)
+  cep         String?   @db.VarChar(10)
+  padrao      Boolean?  @default(false)
+  criado_em   DateTime? @default(now()) @db.Timestamp(6)
+  latitude    Float?
+  longitude   Float?
+  clientes    clientes  @relation(fields: [id_cliente], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  pedidos     pedidos[]
+}
+
+model estoque_variacao {
+  id                  Int               @id @default(autoincrement())
+  id_variacao_produto Int
+  quantidade          Int               @default(0)
+  minimo_critico      Int               @default(0)
+  lead_time_dias      Int               @default(0)
+  variacoes_produto   variacoes_produto @relation(fields: [id_variacao_produto], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model favoritos {
+  id         Int       @id @default(autoincrement())
+  id_cliente Int
+  id_produto Int
+  criado_em  DateTime? @default(now()) @db.Timestamp(6)
+  clientes   clientes  @relation(fields: [id_cliente], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  produtos   produtos  @relation(fields: [id_produto], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([id_cliente, id_produto])
+}
+
+model itens_pedido {
+  id                Int                @id @default(autoincrement())
+  id_pedido         Int
+  id_produto        Int
+  id_variacao       Int?
+  nome_produto      String?            @db.VarChar(100)
+  tamanho           String?            @db.VarChar(10)
+  cor               String?            @db.VarChar(30)
+  quantidade        Int
+  preco_unitario    Decimal            @db.Decimal(10, 2)
+  subtotal          Decimal            @db.Decimal(10, 2)
+  pedidos           pedidos            @relation(fields: [id_pedido], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  produtos          produtos           @relation(fields: [id_produto], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  variacoes_produto variacoes_produto? @relation(fields: [id_variacao], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model logs_admin {
+  id             Int       @id @default(autoincrement())
+  id_admin       Int?
+  acao           String
+  tabela_afetada String?   @db.VarChar(50)
+  id_registro    Int?
+  data_hora      DateTime? @default(now()) @db.Timestamp(6)
+  admins         admins?   @relation(fields: [id_admin], references: [id], onUpdate: NoAction)
+}
+
+model loja_payment_settings {
+  id                      Int       @id @default(autoincrement())
+  id_loja                 Int
+  provider                String    @db.VarChar(30)
+  api_key                 String
+  webhook_secret          String?
+  currency                String    @default("BRL") @db.Char(3)
+  ativo                   Boolean   @default(true)
+  criado_em               DateTime? @default(now()) @db.Timestamp(6)
+  connected_account_id    String?   @db.VarChar
+  application_fee_percent Decimal?  @db.Decimal(5, 2)
+  lojas                   lojas     @relation(fields: [id_loja], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model lojas {
+  id                       Int                     @id @default(autoincrement())
+  nome                     String                  @db.VarChar(100)
+  cnpj                     String?                 @unique @db.VarChar(18)
+  email                    String                  @unique @db.VarChar(100)
+  telefone                 String?                 @db.VarChar(20)
+  endereco_rua             String?                 @db.VarChar(100)
+  endereco_numero          String?                 @db.VarChar(10)
+  endereco_bairro          String?                 @db.VarChar(50)
+  endereco_cidade          String?                 @db.VarChar(50)
+  endereco_estado          String?                 @db.VarChar(2)
+  endereco_cep             String?                 @db.VarChar(10)
+  logo_url                 String?
+  ativo                    Boolean?                @default(true)
+  criado_em                DateTime?               @default(now()) @db.Timestamp(6)
+  senha_hash               String?
+  onboarded                Boolean                 @default(false)
+  latitude                 Float?
+  longitude                Float?
+  banner_url               String?
+  tempo_entrega_estimado   String?                 @db.VarChar(50)
+  taxa_entrega             Decimal?                @default(0.00) @db.Decimal(10, 2)
+  aceita_entrega_expressa  Boolean?                @default(false)
+  raio_entrega_km          Decimal?                @default(5.0) @db.Decimal(5, 2)
+  taxa_entrega_fixa        Decimal?                @default(0.00) @db.Decimal(10, 2)
+  taxa_entrega_por_km      Decimal?                @default(0.00) @db.Decimal(10, 2)
+  tempo_preparo_minutos    Int?                    @default(30)
+  horario_funcionamento    Json?
+  pedido_minimo_entrega    Decimal?                @default(0.00) @db.Decimal(10, 2)
+  frete_gratis_acima_de    Decimal?                @db.Decimal(10, 2)
+  aceitando_pedidos_online Boolean?                @default(true)
+  avaliacoes_loja          avaliacoes_loja[]
+  chamados                 chamados[]
+  dados_bancarios_loja     dados_bancarios_loja[]
+  loja_payment_settings    loja_payment_settings[]
+  password_reset_tokens    password_reset_tokens[]
+  pedidos                  pedidos[]
+  produtos                 produtos[]
+  tokens_push_loja         tokens_push_loja[]
+}
+
+model mensagens_chamado {
+  id         Int       @id @default(autoincrement())
+  id_chamado Int
+  origem     String    @db.VarChar(20)
+  mensagem   String
+  enviado_em DateTime? @default(now()) @db.Timestamp(6)
+  chamados   chamados  @relation(fields: [id_chamado], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model notificacoes {
+  id         Int       @id @default(autoincrement())
+  id_cliente Int
+  titulo     String?   @db.VarChar(100)
+  mensagem   String?
+  lida       Boolean?  @default(false)
+  criado_em  DateTime? @default(now()) @db.Timestamp(6)
+  clientes   clientes  @relation(fields: [id_cliente], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model pagamentos {
+  id                  Int       @id @default(autoincrement())
+  id_pedido           Int
+  metodo_pagamento    String?   @db.VarChar(30)
+  status_pagamento    String?   @db.VarChar(30)
+  url_pagamento       String?
+  qr_code             String?
+  criado_em           DateTime? @default(now()) @db.Timestamp(6)
+  provider_payment_id String?   @db.VarChar
+  provider_charge_id  String?   @db.VarChar
+  provider_fee_amount Decimal?  @db.Decimal(12, 2)
+  platform_fee_amount Decimal?  @db.Decimal(12, 2)
+  transfer_id         String?   @db.VarChar
+  paid_at             DateTime? @db.Timestamptz(6)
+  pedidos             pedidos   @relation(fields: [id_pedido], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model password_reset_tokens {
+  id         Int       @id @default(autoincrement())
+  id_loja    Int
+  token      String    @unique @db.VarChar(100)
+  expires_at DateTime  @db.Timestamptz(6)
+  usado      Boolean   @default(false)
+  criado_em  DateTime? @default(now()) @db.Timestamp(6)
+  lojas      lojas     @relation(fields: [id_loja], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model pedidos {
+  id                  Int                @id @default(autoincrement())
+  id_cliente          Int
+  id_loja             Int
+  id_endereco_entrega Int?
+  status              String?            @default("pendente") @db.VarChar(20)
+  forma_pagamento     String?            @db.VarChar(30)
+  valor_total         Decimal            @db.Decimal(10, 2)
+  observacoes         String?
+  criado_em           DateTime?          @default(now()) @db.Timestamp(6)
+  atualizado_em       DateTime?          @default(now()) @db.Timestamp(6)
+  previsao_entrega    DateTime?          @db.Timestamp(6)
+  itens_pedido        itens_pedido[]
+  pagamentos          pagamentos[]
+  clientes            clientes           @relation(fields: [id_cliente], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  enderecos_cliente   enderecos_cliente? @relation(fields: [id_endereco_entrega], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lojas               lojas              @relation(fields: [id_loja], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model preco_historico {
+  id           Int      @id @default(autoincrement())
+  id_produto   Int
+  preco_antigo Decimal  @db.Decimal
+  preco_novo   Decimal  @db.Decimal
+  alterado_em  DateTime @default(now()) @db.Timestamp(6)
+  produtos     produtos @relation(fields: [id_produto], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model precos_promocao {
+  id                Int      @id @default(autoincrement())
+  id_produto        Int
+  preco_promocional Decimal  @db.Decimal
+  data_inicio       DateTime @db.Date
+  data_fim          DateTime @db.Date
+  produtos          produtos @relation(fields: [id_produto], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model produto_tags {
+  id         Int      @id @default(autoincrement())
+  id_produto Int
+  tag        String   @db.VarChar(100)
+  produtos   produtos @relation(fields: [id_produto], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model produtos {
+  id                 Int                  @id @default(autoincrement())
+  id_loja            Int
+  nome               String               @db.VarChar(100)
+  descricao          String?
+  categoria          String?              @db.VarChar(50)
+  preco_base         Decimal              @db.Decimal(10, 2)
+  imagem_url         String?
+  ativo              Boolean?             @default(true)
+  criado_em          DateTime?            @default(now()) @db.Timestamp(6)
+  slug               String?              @unique @db.VarChar(255)
+  avaliacoes_produto avaliacoes_produto[]
+  favoritos          favoritos[]
+  itens_pedido       itens_pedido[]
+  preco_historico    preco_historico[]
+  precos_promocao    precos_promocao[]
+  produto_tags       produto_tags[]
+  lojas              lojas                @relation(fields: [id_loja], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  produtos_imagens   produtos_imagens[]
+  promocao_produtos  promocao_produtos[]
+  variacoes_produto  variacoes_produto[]
+}
+
+model produtos_imagens {
+  id           Int      @id @default(autoincrement())
+  id_produto   Int
+  url          String
+  ordem        Int      @default(0) @db.SmallInt
+  storage_path String?
+  produtos     produtos @relation(fields: [id_produto], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model promocao_produtos {
+  id          Int       @id @default(autoincrement())
+  id_promocao Int
+  id_produto  Int
+  produtos    produtos  @relation(fields: [id_produto], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  promocoes   promocoes @relation(fields: [id_promocao], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model promocoes {
+  id                Int                 @id @default(autoincrement())
+  tipo              String              @db.VarChar(20)
+  valor             Decimal?            @db.Decimal(10, 2)
+  data_inicio       DateTime            @db.Timestamp(6)
+  data_fim          DateTime            @db.Timestamp(6)
+  estoque_maximo    Int?
+  ativo             Boolean?            @default(true)
+  criado_em         DateTime?           @default(now()) @db.Timestamp(6)
+  atualizado_em     DateTime?           @default(now()) @db.Timestamp(6)
+  promocao_produtos promocao_produtos[]
+}
+
+model tokens_push {
+  id         Int       @id @default(autoincrement())
+  id_cliente Int?
+  fcm_token  String
+  criado_em  DateTime? @default(now()) @db.Timestamp(6)
+  clientes   clientes? @relation(fields: [id_cliente], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model tokens_push_loja {
+  id        Int       @id @default(autoincrement())
+  id_loja   Int
+  fcm_token String
+  criado_em DateTime? @default(now()) @db.Timestamp(6)
+  lojas     lojas     @relation(fields: [id_loja], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model variacoes_produto {
+  id               Int                @id @default(autoincrement())
+  id_produto       Int
+  tamanho          String?            @db.VarChar(10)
+  cor              String?            @db.VarChar(30)
+  sku              String?            @unique @db.VarChar(50)
+  preco            Decimal?           @db.Decimal(10, 2)
+  estoque          Int?               @default(0)
+  ativo            Boolean?           @default(true)
+  criado_em        DateTime?          @default(now()) @db.Timestamp(6)
+  preco_extra      Decimal?           @default(0) @db.Decimal
+  peso             Decimal?           @db.Decimal
+  imagem_url       String?
+  estoque_variacao estoque_variacao[]
+  itens_pedido     itens_pedido[]
+  produtos         produtos           @relation(fields: [id_produto], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}

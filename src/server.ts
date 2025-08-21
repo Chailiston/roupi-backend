@@ -19,7 +19,8 @@ import initialRoutes from './routes/cliente/initialRoutes'
 import productRoutesCliente from './routes/cliente/productRoutes'
 import searchRoutesCliente from './routes/cliente/searchRoutes'
 import storeRoutesCliente from './routes/cliente/storeRoutes'
-import deliveryRoutesCliente from './routes/cliente/deliveryRoutes' // ➕ 1. IMPORTA A NOVA ROTA
+import deliveryRoutesCliente from './routes/cliente/deliveryRoutes'
+import authRoutesCliente from './routes/cliente/authRoutes'; // 👈 1. IMPORTA AS NOVAS ROTAS DE AUTH DO CLIENTE
 
 // --- ROTAS GENÉRICAS E ADMIN ---
 import itemPedidoRoutes from './routes/itemPedidoRoutes'
@@ -58,14 +59,15 @@ app.use('/api/auth', authRoutes)
 app.use('/api/lojas', lojaRoutes)
 app.use('/api/lojas/:lojaId/produtos/:produtoId/variacoes', variacaoProdutoRoutes)
 app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens',   produtoImagemRoutes)
-app.use('/api/lojas/:lojaId/produtos',                      produtoRoutes)
+app.use('/api/lojas/:lojaId/produtos',                 produtoRoutes)
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes)
 
 // API do Cliente
 app.use('/api/cliente/search', searchRoutesCliente) 
 app.use('/api/cliente/produtos', productRoutesCliente) 
 app.use('/api/cliente/lojas', storeRoutesCliente)
-app.use('/api/cliente/delivery', deliveryRoutesCliente) // ➕ 2. REGISTRA A NOVA ROTA
+app.use('/api/cliente/delivery', deliveryRoutesCliente)
+app.use('/api/cliente', authRoutesCliente); //   2. REGISTRA AS NOVAS ROTAS DE AUTH DO CLIENTE
 app.use('/api/cliente', initialRoutes)
 
 // Rotas Genéricas e Admin
@@ -92,3 +94,4 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`)
 })
+ 
