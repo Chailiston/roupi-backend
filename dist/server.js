@@ -21,7 +21,8 @@ const promocoes_1 = __importDefault(require("./routes/promocoes"));
 const initialRoutes_1 = __importDefault(require("./routes/cliente/initialRoutes"));
 const productRoutes_1 = __importDefault(require("./routes/cliente/productRoutes"));
 const searchRoutes_1 = __importDefault(require("./routes/cliente/searchRoutes"));
-const storeRoutes_1 = __importDefault(require("./routes/cliente/storeRoutes")); // ➕ 1. IMPORTA AS NOVAS ROTAS DA LOJA
+const storeRoutes_1 = __importDefault(require("./routes/cliente/storeRoutes"));
+const deliveryRoutes_1 = __importDefault(require("./routes/cliente/deliveryRoutes")); // ➕ 1. IMPORTA A NOVA ROTA
 // --- ROTAS GENÉRICAS E ADMIN ---
 const itemPedidoRoutes_1 = __importDefault(require("./routes/itemPedidoRoutes"));
 const avaliacaoProdutoRoutes_1 = __importDefault(require("./routes/avaliacaoProdutoRoutes"));
@@ -60,7 +61,8 @@ app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes_1.default);
 // API do Cliente
 app.use('/api/cliente/search', searchRoutes_1.default);
 app.use('/api/cliente/produtos', productRoutes_1.default);
-app.use('/api/cliente/lojas', storeRoutes_1.default); // ➕ 2. REGISTRA A NOVA ROTA
+app.use('/api/cliente/lojas', storeRoutes_1.default);
+app.use('/api/cliente/delivery', deliveryRoutes_1.default); // ➕ 2. REGISTRA A NOVA ROTA
 app.use('/api/cliente', initialRoutes_1.default);
 // Rotas Genéricas e Admin
 app.use('/api/itens-pedido', itemPedidoRoutes_1.default);

@@ -18,7 +18,8 @@ import promocoesRoutes from './routes/promocoes'
 import initialRoutes from './routes/cliente/initialRoutes'
 import productRoutesCliente from './routes/cliente/productRoutes'
 import searchRoutesCliente from './routes/cliente/searchRoutes'
-import storeRoutesCliente from './routes/cliente/storeRoutes' // ➕ 1. IMPORTA AS NOVAS ROTAS DA LOJA
+import storeRoutesCliente from './routes/cliente/storeRoutes'
+import deliveryRoutesCliente from './routes/cliente/deliveryRoutes' // ➕ 1. IMPORTA A NOVA ROTA
 
 // --- ROTAS GENÉRICAS E ADMIN ---
 import itemPedidoRoutes from './routes/itemPedidoRoutes'
@@ -63,7 +64,8 @@ app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes)
 // API do Cliente
 app.use('/api/cliente/search', searchRoutesCliente) 
 app.use('/api/cliente/produtos', productRoutesCliente) 
-app.use('/api/cliente/lojas', storeRoutesCliente) // ➕ 2. REGISTRA A NOVA ROTA
+app.use('/api/cliente/lojas', storeRoutesCliente)
+app.use('/api/cliente/delivery', deliveryRoutesCliente) // ➕ 2. REGISTRA A NOVA ROTA
 app.use('/api/cliente', initialRoutes)
 
 // Rotas Genéricas e Admin
