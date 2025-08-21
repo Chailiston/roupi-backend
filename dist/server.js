@@ -10,6 +10,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 const connection_1 = require("./database/connection");
 // --- ROTAS DA LOJA ---
+// Ajuste: Renomeado para clareza, para diferenciar da autenticação do cliente
 const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
 const lojaRoutes_1 = __importDefault(require("./routes/lojaRoutes"));
 const produtoRoutes_1 = __importDefault(require("./routes/produtoRoutes"));
@@ -23,7 +24,7 @@ const productRoutes_1 = __importDefault(require("./routes/cliente/productRoutes"
 const searchRoutes_1 = __importDefault(require("./routes/cliente/searchRoutes"));
 const storeRoutes_1 = __importDefault(require("./routes/cliente/storeRoutes"));
 const deliveryRoutes_1 = __importDefault(require("./routes/cliente/deliveryRoutes"));
-const authRoutes_2 = __importDefault(require("./routes/cliente/authRoutes")); // 👈 1. IMPORTA AS NOVAS ROTAS DE AUTH DO CLIENTE
+const authRoutes_2 = __importDefault(require("./routes/cliente/authRoutes"));
 // --- ROTAS GENÉRICAS E ADMIN ---
 const itemPedidoRoutes_1 = __importDefault(require("./routes/itemPedidoRoutes"));
 const avaliacaoProdutoRoutes_1 = __importDefault(require("./routes/avaliacaoProdutoRoutes"));
@@ -52,19 +53,19 @@ app.get('/api/test-db', async (_req, res) => {
     }
 });
 // --- REGISTO DAS ROTAS ---
-// API da Loja
-app.use('/api/auth', authRoutes_1.default);
+// API da Loja (para o painel do vendedor)
+app.use('/api/auth', authRoutes_1.default); // Autenticação da Loja
 app.use('/api/lojas', lojaRoutes_1.default);
 app.use('/api/lojas/:lojaId/produtos/:produtoId/variacoes', variacoesRoutes_1.default);
 app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens', produtoImagemRoutes_1.default);
 app.use('/api/lojas/:lojaId/produtos', produtoRoutes_1.default);
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes_1.default);
-// API do Cliente
+// API do Cliente (para o aplicativo)
+app.use('/api/cliente', authRoutes_2.default); // Rotas de login/registro do cliente
 app.use('/api/cliente/search', searchRoutes_1.default);
 app.use('/api/cliente/produtos', productRoutes_1.default);
 app.use('/api/cliente/lojas', storeRoutes_1.default);
 app.use('/api/cliente/delivery', deliveryRoutes_1.default);
-app.use('/api/cliente', authRoutes_2.default); //   2. REGISTRA AS NOVAS ROTAS DE AUTH DO CLIENTE
 app.use('/api/cliente', initialRoutes_1.default);
 // Rotas Genéricas e Admin
 app.use('/api/itens-pedido', itemPedidoRoutes_1.default);

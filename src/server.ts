@@ -6,7 +6,8 @@ import path from 'path'
 import { pool } from './database/connection'
 
 // --- ROTAS DA LOJA ---
-import authRoutes from './routes/authRoutes'
+// Ajuste: Renomeado para clareza, para diferenciar da autenticação do cliente
+import authRoutesLoja from './routes/authRoutes' 
 import lojaRoutes from './routes/lojaRoutes'
 import produtoRoutes from './routes/produtoRoutes'
 import produtoImagemRoutes from './routes/produtoImagemRoutes'
@@ -20,7 +21,7 @@ import productRoutesCliente from './routes/cliente/productRoutes'
 import searchRoutesCliente from './routes/cliente/searchRoutes'
 import storeRoutesCliente from './routes/cliente/storeRoutes'
 import deliveryRoutesCliente from './routes/cliente/deliveryRoutes'
-import authRoutesCliente from './routes/cliente/authRoutes'; // 👈 1. IMPORTA AS NOVAS ROTAS DE AUTH DO CLIENTE
+import authRoutesCliente from './routes/cliente/authRoutes';
 
 // --- ROTAS GENÉRICAS E ADMIN ---
 import itemPedidoRoutes from './routes/itemPedidoRoutes'
@@ -54,20 +55,20 @@ app.get('/api/test-db', async (_req, res) => {
 
 // --- REGISTO DAS ROTAS ---
 
-// API da Loja
-app.use('/api/auth', authRoutes)
+// API da Loja (para o painel do vendedor)
+app.use('/api/auth', authRoutesLoja) // Autenticação da Loja
 app.use('/api/lojas', lojaRoutes)
 app.use('/api/lojas/:lojaId/produtos/:produtoId/variacoes', variacaoProdutoRoutes)
 app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens',   produtoImagemRoutes)
 app.use('/api/lojas/:lojaId/produtos',                 produtoRoutes)
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes)
 
-// API do Cliente
+// API do Cliente (para o aplicativo)
+app.use('/api/cliente', authRoutesCliente); // Rotas de login/registro do cliente
 app.use('/api/cliente/search', searchRoutesCliente) 
 app.use('/api/cliente/produtos', productRoutesCliente) 
 app.use('/api/cliente/lojas', storeRoutesCliente)
 app.use('/api/cliente/delivery', deliveryRoutesCliente)
-app.use('/api/cliente', authRoutesCliente); //   2. REGISTRA AS NOVAS ROTAS DE AUTH DO CLIENTE
 app.use('/api/cliente', initialRoutes)
 
 // Rotas Genéricas e Admin
@@ -94,4 +95,3 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`)
 })
- 
