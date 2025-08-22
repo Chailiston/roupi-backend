@@ -87,7 +87,6 @@ export const forgotPassword = async (req: Request, res: Response) => {
     try {
         const userResult = await pool.query('SELECT * FROM clientes WHERE email = $1', [email]);
         if (userResult.rows.length === 0) {
-            // Não informe ao usuário se o e-mail existe ou não, por segurança.
             return res.status(200).json({ message: 'Se o e-mail estiver cadastrado, uma nova senha será enviada.' });
         }
         const user = userResult.rows[0];
@@ -97,6 +96,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
             'UPDATE clientes SET senha_hash = $1, senha_temporaria = TRUE WHERE id = $2',
             [hashedPassword, user.id]
         );
+        // ✅ TEXTO DO E-MAIL RESTAURADO
         await transporter.sendMail({
             from: process.env.EMAIL_FROM,
             to: user.email,
@@ -117,8 +117,6 @@ export const forgotPassword = async (req: Request, res: Response) => {
 };
 
 export const resetPassword = async (req: Request, res: Response) => {
-    // ✅ AJUSTE DE SEGURANÇA: O ID do usuário agora vem do token JWT.
-    // Isso requer um middleware de autenticação que decodifica o token e anexa o usuário ao objeto `req`.
     const userId = (req as any).user?.id;
     const { newPassword } = req.body;
 
