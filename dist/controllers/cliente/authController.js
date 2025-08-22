@@ -15,7 +15,7 @@ const client = new google_auth_library_1.OAuth2Client(GOOGLE_CLIENT_ID);
 const transporter = nodemailer_1.default.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT),
-    secure: false,
+    secure: false, // true for 465, false for other ports
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
@@ -87,6 +87,7 @@ const forgotPassword = async (req, res) => {
     try {
         const userResult = await connection_1.pool.query('SELECT * FROM clientes WHERE email = $1', [email]);
         if (userResult.rows.length === 0) {
+            // Não informe ao usuário se o e-mail existe ou não, por segurança.
             return res.status(200).json({ message: 'Se o e-mail estiver cadastrado, uma nova senha será enviada.' });
         }
         const user = userResult.rows[0];
@@ -114,11 +115,15 @@ const forgotPassword = async (req, res) => {
 };
 exports.forgotPassword = forgotPassword;
 const resetPassword = async (req, res) => {
-    // Esta função precisará de um middleware de autenticação para obter o userId
-    // const userId = req.user.id; 
-    const { userId, newPassword } = req.body; // Simulação por enquanto
-    if (!userId || !newPassword) {
-        return res.status(400).json({ message: 'Dados inválidos.' });
+    // ✅ AJUSTE DE SEGURANÇA: O ID do usuário agora vem do token JWT.
+    // Isso requer um middleware de autenticação que decodifica o token e anexa o usuário ao objeto `req`.
+    const userId = req.user?.id;
+    const { newPassword } = req.body;
+    if (!userId) {
+        return res.status(401).json({ message: 'Não autorizado. Faça o login novamente.' });
+    }
+    if (!newPassword) {
+        return res.status(400).json({ message: 'A nova senha é obrigatória.' });
     }
     if (newPassword.length < 8) {
         return res.status(400).json({ message: 'A nova senha deve ter pelo menos 8 caracteres.' });

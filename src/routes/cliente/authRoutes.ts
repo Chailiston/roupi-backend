@@ -1,6 +1,8 @@
 // backend/src/routes/cliente/authRoutes.ts
 import { Router } from 'express';
 import { register, login, googleLogin, forgotPassword, resetPassword } from '../../controllers/cliente/authController';
+// ✅ 1. IMPORTA O MIDDLEWARE CORRIGIDO
+import { authMiddleware } from '../../middlewares/authMiddleware';
 
 const router = Router();
 
@@ -17,7 +19,8 @@ router.post('/auth/google', googleLogin);
 router.post('/auth/forgot-password', forgotPassword);
 
 // Rota para definir a nova senha (requer autenticação)
-// Esta rota precisará de um middleware de autenticação no futuro
-router.post('/auth/reset-password', resetPassword);
+// ✅ 2. APLICA O MIDDLEWARE NA ROTA
+// Agora, qualquer requisição para esta rota passará primeiro pela verificação do token.
+router.post('/auth/reset-password', authMiddleware, resetPassword);
 
 export default router;

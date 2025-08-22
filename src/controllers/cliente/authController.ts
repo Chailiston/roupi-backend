@@ -13,7 +13,7 @@ const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT),
-    secure: false,
+    secure: false, // true for 465, false for other ports
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
@@ -87,6 +87,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     try {
         const userResult = await pool.query('SELECT * FROM clientes WHERE email = $1', [email]);
         if (userResult.rows.length === 0) {
+            // Não informe ao usuário se o e-mail existe ou não, por segurança.
             return res.status(200).json({ message: 'Se o e-mail estiver cadastrado, uma nova senha será enviada.' });
         }
         const user = userResult.rows[0];
@@ -116,15 +117,21 @@ export const forgotPassword = async (req: Request, res: Response) => {
 };
 
 export const resetPassword = async (req: Request, res: Response) => {
-    // Esta função precisará de um middleware de autenticação para obter o userId
-    // const userId = req.user.id; 
-    const { userId, newPassword } = req.body; // Simulação por enquanto
-    if (!userId || !newPassword) {
-        return res.status(400).json({ message: 'Dados inválidos.' });
+    // ✅ AJUSTE DE SEGURANÇA: O ID do usuário agora vem do token JWT.
+    // Isso requer um middleware de autenticação que decodifica o token e anexa o usuário ao objeto `req`.
+    const userId = (req as any).user?.id;
+    const { newPassword } = req.body;
+
+    if (!userId) {
+        return res.status(401).json({ message: 'Não autorizado. Faça o login novamente.' });
+    }
+    if (!newPassword) {
+        return res.status(400).json({ message: 'A nova senha é obrigatória.' });
     }
     if (newPassword.length < 8) {
         return res.status(400).json({ message: 'A nova senha deve ter pelo menos 8 caracteres.' });
     }
+
     try {
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         await pool.query(

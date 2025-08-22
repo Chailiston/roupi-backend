@@ -1,15 +1,18 @@
-// src/middlewares/authMiddleware.ts
+// src/middleware/authMiddleware.ts
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
+// ✅ ADICIONA A MESMA LÓGICA DE FALLBACK DO CONTROLLER
+const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto';
+
 interface JwtPayload {
-  clientId: number;
+  id: number;
+  email: string;
 }
 
-// Estende a interface Request para incluir `user`
 declare module 'express-serve-static-core' {
   interface Request {
-    user?: { clientId: number };
+    user?: { id: number };
   }
 }
 
@@ -21,8 +24,11 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
 
   const token = header.split(' ')[1];
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload;
-    req.user = { clientId: payload.clientId };
+    // ✅ USA A VARIÁVEL JWT_SECRET CONSISTENTE
+    const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    
+    req.user = { id: payload.id };
+    
     next();
   } catch {
     return res.status(401).json({ error: 'Token inválido.' });
