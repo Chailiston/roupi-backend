@@ -21,7 +21,8 @@ import searchRoutesCliente from './routes/cliente/searchRoutes'
 import storeRoutesCliente from './routes/cliente/storeRoutes'
 import deliveryRoutesCliente from './routes/cliente/deliveryRoutes'
 import authRoutesCliente from './routes/cliente/authRoutes';
-import checkoutRoutesCliente from './routes/cliente/checkoutRoutes'; // ✅ 1. IMPORTA AS NOVAS ROTAS
+import checkoutRoutesCliente from './routes/cliente/checkoutRoutes';
+import addressRoutesCliente from './routes/cliente/addressRoutes'; // ✅ 1. IMPORTA AS ROTAS DE ENDEREÇO
 
 // --- ROTAS GENÉRICAS E ADMIN ---
 import itemPedidoRoutes from './routes/itemPedidoRoutes'
@@ -59,13 +60,14 @@ app.get('/api/test-db', async (_req, res) => {
 app.use('/api/auth', authRoutesLoja) // Autenticação da Loja
 app.use('/api/lojas', lojaRoutes)
 app.use('/api/lojas/:lojaId/produtos/:produtoId/variacoes', variacaoProdutoRoutes)
-app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens',   produtoImagemRoutes)
-app.use('/api/lojas/:lojaId/produtos',                      produtoRoutes)
+app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens',    produtoImagemRoutes)
+app.use('/api/lojas/:lojaId/produtos',                       produtoRoutes)
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes)
 
 // API do Cliente (para o aplicativo)
-app.use('/api/cliente', authRoutesCliente); // Rotas de login/registro do cliente
-app.use('/api/cliente', checkoutRoutesCliente); // ✅ 2. REGISTA AS NOVAS ROTAS
+app.use('/api/cliente', authRoutesCliente); 
+app.use('/api/cliente', checkoutRoutesCliente); 
+app.use('/api/cliente/enderecos', addressRoutesCliente); // ✅ 2. REGISTA AS ROTAS DE ENDEREÇO
 app.use('/api/cliente/search', searchRoutesCliente) 
 app.use('/api/cliente/produtos', productRoutesCliente) 
 app.use('/api/cliente/lojas', storeRoutesCliente)
