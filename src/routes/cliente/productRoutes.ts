@@ -2,18 +2,18 @@ import { Router } from 'express'
 import {
   getProductDetails,
   searchProducts,
-  getRelatedProducts, // 1. Importa a nova função
-} from '../../controllers/cliente/productController'
+  getRelatedProducts,
+} from '../../controllers/cliente/productController' // Verifique se o nome do ficheiro está correto
 
 const router = Router()
 
-// Rota para a pesquisa de produtos
+// Rota para a pesquisa de produtos (geralmente a mais genérica)
 router.get('/', searchProducts)
 
-// Rota para buscar os detalhes de um único produto
-router.get('/:id', getProductDetails)
-
-// 2. Adiciona a nova rota para produtos relacionados
+// ✅ CORREÇÃO: Rota mais específica primeiro
 router.get('/:id/related', getRelatedProducts)
+
+// Rota mais genérica depois
+router.get('/:id', getProductDetails)
 
 export default router
