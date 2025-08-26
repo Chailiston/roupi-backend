@@ -25,7 +25,8 @@ const storeRoutes_1 = __importDefault(require("./routes/cliente/storeRoutes"));
 const deliveryRoutes_1 = __importDefault(require("./routes/cliente/deliveryRoutes"));
 const authRoutes_2 = __importDefault(require("./routes/cliente/authRoutes"));
 const checkoutRoutes_1 = __importDefault(require("./routes/cliente/checkoutRoutes"));
-const addressRoutes_1 = __importDefault(require("./routes/cliente/addressRoutes")); // ✅ 1. IMPORTA AS ROTAS DE ENDEREÇO
+// ✅ 1. IMPORTAÇÃO CORRETA DAS ROTAS DE ENDEREÇO
+const addressRoutes_1 = __importDefault(require("./routes/cliente/addressRoutes"));
 // --- ROTAS GENÉRICAS E ADMIN ---
 const itemPedidoRoutes_1 = __importDefault(require("./routes/itemPedidoRoutes"));
 const avaliacaoProdutoRoutes_1 = __importDefault(require("./routes/avaliacaoProdutoRoutes"));
@@ -64,7 +65,8 @@ app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes_1.default);
 // API do Cliente (para o aplicativo)
 app.use('/api/cliente', authRoutes_2.default);
 app.use('/api/cliente', checkoutRoutes_1.default);
-app.use('/api/cliente/enderecos', addressRoutes_1.default); // ✅ 2. REGISTA AS ROTAS DE ENDEREÇO
+// ✅ 2. REGISTO CORRETO DAS ROTAS DE ENDEREÇO COM O PREFIXO /api/cliente/enderecos
+app.use('/api/cliente/enderecos', addressRoutes_1.default);
 app.use('/api/cliente/search', searchRoutes_1.default);
 app.use('/api/cliente/produtos', productRoutes_1.default);
 app.use('/api/cliente/lojas', storeRoutes_1.default);

@@ -3,26 +3,31 @@ import { Router } from 'express';
 import { 
     listAddresses, 
     createAddress, 
-    setDefaultAddress 
-} from '../../controllers/cliente/addressController'; // Você precisará criar este controller
+    setDefaultAddress,
+    deleteAddress // ✅ 1. Importar a nova função
+} from '../../controllers/cliente/addressController';
 import { authMiddleware } from '../../middlewares/authMiddleware';
 
 const router = Router();
 
-// Todas as rotas de endereço devem ser protegidas,
-// pois lidam com dados específicos de um usuário logado.
+// Todas as rotas de endereço são protegidas, pois lidam
+// com dados específicos de um utilizador logado.
 router.use(authMiddleware);
 
-// Rota para listar todos os endereços do cliente logado
-// Corresponde a: GET /api/cliente/enderecos
+// Rota para listar todos os endereços ATIVOS do cliente
+// GET /api/cliente/enderecos
 router.get('/', listAddresses);
 
-// Rota para criar um novo endereço para o cliente logado
-// Corresponde a: POST /api/cliente/enderecos
+// Rota para criar um novo endereço para o cliente
+// POST /api/cliente/enderecos
 router.post('/', createAddress);
 
 // Rota para definir um endereço específico como padrão
-// Corresponde a: PATCH /api/cliente/enderecos/:id/set-default
+// PATCH /api/cliente/enderecos/:id/set-default
 router.patch('/:id/set-default', setDefaultAddress);
+
+// ✅ 2. Adicionar a nova rota para "apagar" (desativar) um endereço
+// DELETE /api/cliente/enderecos/:id
+router.delete('/:id', deleteAddress);
 
 export default router;
