@@ -5,7 +5,7 @@ import Stripe from 'stripe';
 
 // Inicializa a Stripe com a chave secreta do seu arquivo .env
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2025-07-30.basil',
+    apiVersion: '2024-06-20',
 });
 
 // Tipagem para os itens do carrinho que vêm do frontend
@@ -16,11 +16,63 @@ interface CartItem {
     variationId?: number;
 }
 
+// =====================================================================
+// ✅ FUNÇÃO AUXILIAR PARA CÁLCULO DE PARCELAS COM TAXAS AJUSTADAS
+// =====================================================================
+/**
+ * Calcula as opções de parcelamento para um determinado valor.
+ * @param totalAmount - O valor total da compra em número (ex: 63.20).
+ * @returns Um array de opções de parcelamento.
+ */
+const calculateInstallmentOptions = (totalAmount: number) => {
+    const options = [];
+    // ✅ TAXAS ATUALIZADAS: Oferecendo apenas 1x sem juros.
+    // Todas as outras parcelas incluem juros para cobrir as taxas do Stripe.
+    const interestRates: { [key: number]: number } = {
+        1: 0,       // 1x Sem juros
+        2: 0.0439,  // 4.39% de juros (Exemplo para 2x)
+        3: 0.0549,  // 5.49% de juros (Exemplo para 3x)
+        4: 0.0639,  // 6.39% de juros (Exemplo)
+        5: 0.0759,  // 7.59% de juros (Exemplo)
+        6: 0.0879,  // 8.79% de juros (Exemplo)
+        7: 0.0999,  // 9.99% de juros (Exemplo)
+        8: 0.1119,  // 11.19% de juros (Exemplo)
+        9: 0.1239,  // 12.39% de juros (Exemplo)
+        10: 0.1349, // 13.49% de juros (Exemplo)
+        11: 0.1459, // 14.59% de juros (Exemplo)
+        12: 0.1569, // 15.69% de juros (Exemplo)
+    };
+    const maxInstallments = 12; // Aumentado o número máximo de parcelas
+
+    for (let i = 1; i <= maxInstallments; i++) {
+        const rate = interestRates[i];
+        if (rate === undefined) continue;
+
+        const totalWithInterest = totalAmount * (1 + rate);
+        const installmentAmount = totalWithInterest / i;
+
+        const formatMoney = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        const label = rate === 0
+            ? `${i}x de ${formatMoney(installmentAmount)} (sem juros)`
+            : `${i}x de ${formatMoney(installmentAmount)} (Total: ${formatMoney(totalWithInterest)})`;
+
+        options.push({
+            installments: i,
+            amount: parseFloat(totalWithInterest.toFixed(2)),
+            label: label,
+        });
+    }
+    return options;
+};
+
+
 /**
  * @route GET /api/cliente/checkout/details
  * @description Busca os dados necessários para a tela de checkout.
  */
 export const getCheckoutDetails = async (req: Request, res: Response) => {
+    // (Nenhuma alteração nesta função)
     const clienteId = (req as any).user?.id;
     if (!clienteId) {
         return res.status(401).json({ message: 'Não autorizado.' });
@@ -146,9 +198,6 @@ export const placeOrder = async (req: Request, res: Response) => {
 
             const comissao = Math.round(valorTotalPedido * 100 * 0.10); // 10% em centavos
 
-            // ✅ AJUSTE TEMPORÁRIO: Removido 'boleto' e 'pix' pois a conta Stripe está "Em análise"
-            // e não possui esses métodos de pagamento ativados.
-            // Adicione-os de volta quando a conta for aprovada e os métodos ativados no Dashboard.
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: Math.round(valorTotalPedido * 100),
                 currency: 'brl',
@@ -168,10 +217,13 @@ export const placeOrder = async (req: Request, res: Response) => {
                 `INSERT INTO pagamentos (id_pedido, metodo_pagamento, status_pagamento, stripe_payment_intent_id, stripe_client_secret) VALUES ($1, $2, 'pendente', $3, $4)`,
                 [pedidoId, forma_pagamento, paymentIntent.id, paymentIntent.client_secret]
             );
+            
+            const installmentOptions = calculateInstallmentOptions(valorTotalPedido);
 
             createdOrders.push({
                 pedidoId: pedidoId,
                 clientSecret: paymentIntent.client_secret,
+                installmentOptions: installmentOptions,
             });
         }
 
