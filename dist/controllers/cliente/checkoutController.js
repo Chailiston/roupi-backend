@@ -8,8 +8,53 @@ const connection_1 = require("../../database/connection");
 const stripe_1 = __importDefault(require("stripe"));
 // Inicializa a Stripe com a chave secreta do seu arquivo .env
 const stripe = new stripe_1.default(process.env.STRIPE_SECRET_KEY, {
+    // ✅ CORREÇÃO: Versão da API ajustada para corresponder ao tipo esperado pelo projeto.
     apiVersion: '2025-07-30.basil',
 });
+// =====================================================================
+// FUNÇÃO AUXILIAR PARA CÁLCULO DE PARCELAS
+// =====================================================================
+/**
+ * Calcula as opções de parcelamento para um determinado valor.
+ * @param totalAmount - O valor total da compra em número (ex: 63.20).
+ * @returns Um array de opções de parcelamento.
+ */
+const calculateInstallmentOptions = (totalAmount) => {
+    const options = [];
+    // Defina suas taxas de juros aqui.
+    const interestRates = {
+        1: 0, // 1x Sem juros
+        2: 0.0439, // 4.39% de juros (Exemplo para 2x)
+        3: 0.0549, // 5.49% de juros (Exemplo para 3x)
+        4: 0.0639, // 6.39% de juros (Exemplo)
+        5: 0.0759, // 7.59% de juros (Exemplo)
+        6: 0.0879, // 8.79% de juros (Exemplo)
+        7: 0.0999, // 9.99% de juros (Exemplo)
+        8: 0.1119, // 11.19% de juros (Exemplo)
+        9: 0.1239, // 12.39% de juros (Exemplo)
+        10: 0.1349, // 13.49% de juros (Exemplo)
+        11: 0.1459, // 14.59% de juros (Exemplo)
+        12: 0.1569, // 15.69% de juros (Exemplo)
+    };
+    const maxInstallments = 12;
+    for (let i = 1; i <= maxInstallments; i++) {
+        const rate = interestRates[i];
+        if (rate === undefined)
+            continue;
+        const totalWithInterest = totalAmount * (1 + rate);
+        const installmentAmount = totalWithInterest / i;
+        const formatMoney = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const label = rate === 0
+            ? `${i}x de ${formatMoney(installmentAmount)} (sem juros)`
+            : `${i}x de ${formatMoney(installmentAmount)} (Total: ${formatMoney(totalWithInterest)})`;
+        options.push({
+            installments: i,
+            amount: parseFloat(totalWithInterest.toFixed(2)),
+            label: label,
+        });
+    }
+    return options;
+};
 /**
  * @route GET /api/cliente/checkout/details
  * @description Busca os dados necessários para a tela de checkout.
@@ -102,9 +147,6 @@ const placeOrder = async (req, res) => {
                 throw new Error(`Loja com ID ${storeId} não possui uma conta de pagamento Stripe ativa e configurada.`);
             }
             const comissao = Math.round(valorTotalPedido * 100 * 0.10); // 10% em centavos
-            // ✅ AJUSTE TEMPORÁRIO: Removido 'boleto' e 'pix' pois a conta Stripe está "Em análise"
-            // e não possui esses métodos de pagamento ativados.
-            // Adicione-os de volta quando a conta for aprovada e os métodos ativados no Dashboard.
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: Math.round(valorTotalPedido * 100),
                 currency: 'brl',
@@ -120,9 +162,11 @@ const placeOrder = async (req, res) => {
                 }
             });
             await client.query(`INSERT INTO pagamentos (id_pedido, metodo_pagamento, status_pagamento, stripe_payment_intent_id, stripe_client_secret) VALUES ($1, $2, 'pendente', $3, $4)`, [pedidoId, forma_pagamento, paymentIntent.id, paymentIntent.client_secret]);
+            const installmentOptions = calculateInstallmentOptions(valorTotalPedido);
             createdOrders.push({
                 pedidoId: pedidoId,
                 clientSecret: paymentIntent.client_secret,
+                installmentOptions: installmentOptions,
             });
         }
         await client.query('COMMIT');

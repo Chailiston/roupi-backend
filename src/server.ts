@@ -22,8 +22,9 @@ import storeRoutesCliente from './routes/cliente/storeRoutes'
 import deliveryRoutesCliente from './routes/cliente/deliveryRoutes'
 import authRoutesCliente from './routes/cliente/authRoutes';
 import checkoutRoutesCliente from './routes/cliente/checkoutRoutes';
-// ✅ 1. IMPORTAÇÃO CORRETA DAS ROTAS DE ENDEREÇO
 import addressRoutesCliente from './routes/cliente/addressRoutes'; 
+// ✅ 1. IMPORTAÇÃO DAS NOVAS ROTAS DE PEDIDOS
+import orderRoutesCliente from './routes/cliente/orderRoutes';
 
 // --- ROTAS GENÉRICAS E ADMIN ---
 import itemPedidoRoutes from './routes/itemPedidoRoutes'
@@ -62,13 +63,14 @@ app.use('/api/auth', authRoutesLoja) // Autenticação da Loja
 app.use('/api/lojas', lojaRoutes)
 app.use('/api/lojas/:lojaId/produtos/:produtoId/variacoes', variacaoProdutoRoutes)
 app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens',    produtoImagemRoutes)
-app.use('/api/lojas/:lojaId/produtos',                      produtoRoutes)
+app.use('/api/lojas/:lojaId/produtos',                       produtoRoutes)
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes)
 
 // API do Cliente (para o aplicativo)
 app.use('/api/cliente', authRoutesCliente); 
 app.use('/api/cliente', checkoutRoutesCliente); 
-// ✅ 2. REGISTO CORRETO DAS ROTAS DE ENDEREÇO COM O PREFIXO /api/cliente/enderecos
+// ✅ 2. REGISTO DAS NOVAS ROTAS DE PEDIDOS
+app.use('/api/cliente', orderRoutesCliente); 
 app.use('/api/cliente/enderecos', addressRoutesCliente); 
 app.use('/api/cliente/search', searchRoutesCliente) 
 app.use('/api/cliente/produtos', productRoutesCliente) 
