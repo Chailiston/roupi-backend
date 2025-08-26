@@ -5,7 +5,8 @@ import Stripe from 'stripe';
 
 // Inicializa a Stripe com a chave secreta do seu arquivo .env
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2024-06-20',
+    // ✅ CORREÇÃO: Versão da API ajustada para corresponder ao tipo esperado pelo projeto.
+    apiVersion: '2025-07-30.basil',
 });
 
 // Tipagem para os itens do carrinho que vêm do frontend
@@ -17,7 +18,7 @@ interface CartItem {
 }
 
 // =====================================================================
-// ✅ FUNÇÃO AUXILIAR PARA CÁLCULO DE PARCELAS COM TAXAS AJUSTADAS
+// FUNÇÃO AUXILIAR PARA CÁLCULO DE PARCELAS
 // =====================================================================
 /**
  * Calcula as opções de parcelamento para um determinado valor.
@@ -26,8 +27,7 @@ interface CartItem {
  */
 const calculateInstallmentOptions = (totalAmount: number) => {
     const options = [];
-    // ✅ TAXAS ATUALIZADAS: Oferecendo apenas 1x sem juros.
-    // Todas as outras parcelas incluem juros para cobrir as taxas do Stripe.
+    // Defina suas taxas de juros aqui.
     const interestRates: { [key: number]: number } = {
         1: 0,       // 1x Sem juros
         2: 0.0439,  // 4.39% de juros (Exemplo para 2x)
@@ -42,7 +42,7 @@ const calculateInstallmentOptions = (totalAmount: number) => {
         11: 0.1459, // 14.59% de juros (Exemplo)
         12: 0.1569, // 15.69% de juros (Exemplo)
     };
-    const maxInstallments = 12; // Aumentado o número máximo de parcelas
+    const maxInstallments = 12;
 
     for (let i = 1; i <= maxInstallments; i++) {
         const rate = interestRates[i];
@@ -72,7 +72,6 @@ const calculateInstallmentOptions = (totalAmount: number) => {
  * @description Busca os dados necessários para a tela de checkout.
  */
 export const getCheckoutDetails = async (req: Request, res: Response) => {
-    // (Nenhuma alteração nesta função)
     const clienteId = (req as any).user?.id;
     if (!clienteId) {
         return res.status(401).json({ message: 'Não autorizado.' });
