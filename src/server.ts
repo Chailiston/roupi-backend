@@ -23,8 +23,9 @@ import deliveryRoutesCliente from './routes/cliente/deliveryRoutes'
 import authRoutesCliente from './routes/cliente/authRoutes';
 import checkoutRoutesCliente from './routes/cliente/checkoutRoutes';
 import addressRoutesCliente from './routes/cliente/addressRoutes'; 
-// ✅ 1. IMPORTAÇÃO DAS NOVAS ROTAS DE PEDIDOS
 import orderRoutesCliente from './routes/cliente/orderRoutes';
+// ✅ 1. IMPORTAÇÃO DAS NOVAS ROTAS DE PERFIL
+import profileRoutesCliente from './routes/cliente/profileRoutes';
 
 // --- ROTAS GENÉRICAS E ADMIN ---
 import itemPedidoRoutes from './routes/itemPedidoRoutes'
@@ -69,8 +70,9 @@ app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes)
 // API do Cliente (para o aplicativo)
 app.use('/api/cliente', authRoutesCliente); 
 app.use('/api/cliente', checkoutRoutesCliente); 
-// ✅ 2. REGISTO DAS NOVAS ROTAS DE PEDIDOS
 app.use('/api/cliente', orderRoutesCliente); 
+// ✅ 2. REGISTO DAS NOVAS ROTAS DE PERFIL COM O PREFIXO CORRETO
+app.use('/api/cliente/profile', profileRoutesCliente); 
 app.use('/api/cliente/enderecos', addressRoutesCliente); 
 app.use('/api/cliente/search', searchRoutesCliente) 
 app.use('/api/cliente/produtos', productRoutesCliente) 
@@ -102,3 +104,4 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 app.listen(port, () => {
   console.log(`Servidor rodando em http://localhost:${port}`)
 })
+
