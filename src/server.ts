@@ -1,4 +1,3 @@
-// src/server.ts
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
@@ -24,8 +23,8 @@ import authRoutesCliente from './routes/cliente/authRoutes';
 import checkoutRoutesCliente from './routes/cliente/checkoutRoutes';
 import addressRoutesCliente from './routes/cliente/addressRoutes'; 
 import orderRoutesCliente from './routes/cliente/orderRoutes';
-// ✅ 1. IMPORTAÇÃO DAS NOVAS ROTAS DE PERFIL
 import profileRoutesCliente from './routes/cliente/profileRoutes';
+import favoriteRoutesCliente from './routes/cliente/favoriteRoutes'; // ✅ 1. IMPORTAÇÃO DAS ROTAS DE FAVORITOS
 
 // --- ROTAS GENÉRICAS E ADMIN ---
 import itemPedidoRoutes from './routes/itemPedidoRoutes'
@@ -71,8 +70,8 @@ app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes)
 app.use('/api/cliente', authRoutesCliente); 
 app.use('/api/cliente', checkoutRoutesCliente); 
 app.use('/api/cliente', orderRoutesCliente); 
-// ✅ 2. REGISTO DAS NOVAS ROTAS DE PERFIL COM O PREFIXO CORRETO
 app.use('/api/cliente/profile', profileRoutesCliente); 
+app.use('/api/cliente/favoritos', favoriteRoutesCliente); // ✅ 2. REGISTRO DAS ROTAS DE FAVORITOS
 app.use('/api/cliente/enderecos', addressRoutesCliente); 
 app.use('/api/cliente/search', searchRoutesCliente) 
 app.use('/api/cliente/produtos', productRoutesCliente) 

@@ -3,7 +3,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// src/server.ts
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -27,8 +26,8 @@ const authRoutes_2 = __importDefault(require("./routes/cliente/authRoutes"));
 const checkoutRoutes_1 = __importDefault(require("./routes/cliente/checkoutRoutes"));
 const addressRoutes_1 = __importDefault(require("./routes/cliente/addressRoutes"));
 const orderRoutes_1 = __importDefault(require("./routes/cliente/orderRoutes"));
-// ✅ 1. IMPORTAÇÃO DAS NOVAS ROTAS DE PERFIL
 const profileRoutes_1 = __importDefault(require("./routes/cliente/profileRoutes"));
+const favoriteRoutes_1 = __importDefault(require("./routes/cliente/favoriteRoutes")); // ✅ 1. IMPORTAR ROTAS DE FAVORITOS
 // --- ROTAS GENÉRICAS E ADMIN ---
 const itemPedidoRoutes_1 = __importDefault(require("./routes/itemPedidoRoutes"));
 const avaliacaoProdutoRoutes_1 = __importDefault(require("./routes/avaliacaoProdutoRoutes"));
@@ -68,8 +67,8 @@ app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes_1.default);
 app.use('/api/cliente', authRoutes_2.default);
 app.use('/api/cliente', checkoutRoutes_1.default);
 app.use('/api/cliente', orderRoutes_1.default);
-// ✅ 2. REGISTO DAS NOVAS ROTAS DE PERFIL
 app.use('/api/cliente/profile', profileRoutes_1.default);
+app.use('/api/cliente/favoritos', favoriteRoutes_1.default); // ✅ 2. REGISTRAR ROTAS DE FAVORITOS
 app.use('/api/cliente/enderecos', addressRoutes_1.default);
 app.use('/api/cliente/search', searchRoutes_1.default);
 app.use('/api/cliente/produtos', productRoutes_1.default);
