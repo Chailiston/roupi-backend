@@ -54,9 +54,9 @@ export const listFavorites = async (req: AuthenticatedRequest, res: Response) =>
  */
 export const addFavorite = async (req: AuthenticatedRequest, res: Response) => {
     const clienteId = req.user?.id;
-    const { productId } = req.body;
+    const { produto_id } = req.body;
 
-    if (!productId) {
+    if (!produto_id) {
         return res.status(400).json({ message: 'O ID do produto é obrigatório.' });
     }
 
@@ -64,7 +64,7 @@ export const addFavorite = async (req: AuthenticatedRequest, res: Response) => {
         // Verifica se o favorito já existe para não duplicar
         const existingFavorite = await pool.query(
             'SELECT id FROM favoritos WHERE id_cliente = $1 AND id_produto = $2',
-            [clienteId, productId]
+            [clienteId, produto_id]
         );
 
         if (existingFavorite.rows.length > 0) {
@@ -72,7 +72,7 @@ export const addFavorite = async (req: AuthenticatedRequest, res: Response) => {
         }
 
         const sql = 'INSERT INTO favoritos (id_cliente, id_produto) VALUES ($1, $2) RETURNING *';
-        const { rows } = await pool.query(sql, [clienteId, productId]);
+        const { rows } = await pool.query(sql, [clienteId, produto_id]);
         res.status(201).json(rows[0]);
     } catch (error) {
         console.error('Erro ao adicionar favorito:', error);
@@ -88,6 +88,10 @@ export const addFavorite = async (req: AuthenticatedRequest, res: Response) => {
 export const removeFavorite = async (req: AuthenticatedRequest, res: Response) => {
     const clienteId = req.user?.id;
     const { productId } = req.params;
+
+    if (!productId) {
+        return res.status(400).json({ message: 'O ID do produto é obrigatório.' });
+    }
 
     try {
         const sql = 'DELETE FROM favoritos WHERE id_cliente = $1 AND id_produto = $2';
@@ -112,6 +116,10 @@ export const removeFavorite = async (req: AuthenticatedRequest, res: Response) =
 export const checkFavoriteStatus = async (req: AuthenticatedRequest, res: Response) => {
     const clienteId = req.user?.id;
     const { productId } = req.params;
+
+    if (!productId) {
+        return res.status(400).json({ message: 'O ID do produto é obrigatório.' });
+    }
 
     try {
         const sql = 'SELECT EXISTS (SELECT 1 FROM favoritos WHERE id_cliente = $1 AND id_produto = $2)';

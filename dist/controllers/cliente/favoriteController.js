@@ -51,18 +51,18 @@ exports.listFavorites = listFavorites;
  */
 const addFavorite = async (req, res) => {
     const clienteId = req.user?.id;
-    const { productId } = req.body;
-    if (!productId) {
+    const { produto_id } = req.body;
+    if (!produto_id) {
         return res.status(400).json({ message: 'O ID do produto é obrigatório.' });
     }
     try {
         // Verifica se o favorito já existe para não duplicar
-        const existingFavorite = await connection_1.pool.query('SELECT id FROM favoritos WHERE id_cliente = $1 AND id_produto = $2', [clienteId, productId]);
+        const existingFavorite = await connection_1.pool.query('SELECT id FROM favoritos WHERE id_cliente = $1 AND id_produto = $2', [clienteId, produto_id]);
         if (existingFavorite.rows.length > 0) {
             return res.status(200).json({ message: 'Produto já está nos favoritos.' });
         }
         const sql = 'INSERT INTO favoritos (id_cliente, id_produto) VALUES ($1, $2) RETURNING *';
-        const { rows } = await connection_1.pool.query(sql, [clienteId, productId]);
+        const { rows } = await connection_1.pool.query(sql, [clienteId, produto_id]);
         res.status(201).json(rows[0]);
     }
     catch (error) {
@@ -79,6 +79,9 @@ exports.addFavorite = addFavorite;
 const removeFavorite = async (req, res) => {
     const clienteId = req.user?.id;
     const { productId } = req.params;
+    if (!productId) {
+        return res.status(400).json({ message: 'O ID do produto é obrigatório.' });
+    }
     try {
         const sql = 'DELETE FROM favoritos WHERE id_cliente = $1 AND id_produto = $2';
         const result = await connection_1.pool.query(sql, [clienteId, productId]);
@@ -101,6 +104,9 @@ exports.removeFavorite = removeFavorite;
 const checkFavoriteStatus = async (req, res) => {
     const clienteId = req.user?.id;
     const { productId } = req.params;
+    if (!productId) {
+        return res.status(400).json({ message: 'O ID do produto é obrigatório.' });
+    }
     try {
         const sql = 'SELECT EXISTS (SELECT 1 FROM favoritos WHERE id_cliente = $1 AND id_produto = $2)';
         const { rows } = await connection_1.pool.query(sql, [clienteId, productId]);

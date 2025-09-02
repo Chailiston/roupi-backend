@@ -27,7 +27,7 @@ const checkoutRoutes_1 = __importDefault(require("./routes/cliente/checkoutRoute
 const addressRoutes_1 = __importDefault(require("./routes/cliente/addressRoutes"));
 const orderRoutes_1 = __importDefault(require("./routes/cliente/orderRoutes"));
 const profileRoutes_1 = __importDefault(require("./routes/cliente/profileRoutes"));
-const favoriteRoutes_1 = __importDefault(require("./routes/cliente/favoriteRoutes")); // ✅ 1. IMPORTAR ROTAS DE FAVORITOS
+const favoriteRoutes_1 = __importDefault(require("./routes/cliente/favoriteRoutes")); // ✅ 1. IMPORTAÇÃO DAS ROTAS DE FAVORITOS
 // --- ROTAS GENÉRICAS E ADMIN ---
 const itemPedidoRoutes_1 = __importDefault(require("./routes/itemPedidoRoutes"));
 const avaliacaoProdutoRoutes_1 = __importDefault(require("./routes/avaliacaoProdutoRoutes"));
@@ -68,7 +68,7 @@ app.use('/api/cliente', authRoutes_2.default);
 app.use('/api/cliente', checkoutRoutes_1.default);
 app.use('/api/cliente', orderRoutes_1.default);
 app.use('/api/cliente/profile', profileRoutes_1.default);
-app.use('/api/cliente/favoritos', favoriteRoutes_1.default); // ✅ 2. REGISTRAR ROTAS DE FAVORITOS
+app.use('/api/cliente/favoritos', favoriteRoutes_1.default); // ✅ 2. REGISTRO DAS ROTAS DE FAVORITOS
 app.use('/api/cliente/enderecos', addressRoutes_1.default);
 app.use('/api/cliente/search', searchRoutes_1.default);
 app.use('/api/cliente/produtos', productRoutes_1.default);
