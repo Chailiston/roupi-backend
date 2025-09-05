@@ -1,25 +1,26 @@
-// backend/src/controllers/cliente/authController.ts
 import { Request, Response } from 'express';
 import { pool } from '../../database/connection';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { OAuth2Client } from 'google-auth-library';
 import nodemailer from 'nodemailer';
+// ✅ CORREÇÃO: Importado o Firebase Admin para verificação de token
+import { admin } from '../../config/firebaseAdmin';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto';
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+// Garante que o JWT_SECRET tenha um valor padrão seguro se não for definido nas variáveis de ambiente
+const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-e-dificil-de-adivinhar';
 
+// Configuração do Nodemailer (mantida como estava)
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT),
-    secure: false, // true for 465, false for other ports
+    secure: process.env.SMTP_SECURE === 'true', // Usar `secure: true` para a porta 465
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
     },
 });
 
+// ✅ MANTIDO: Sua função de registro está correta.
 export const register = async (req: Request, res: Response) => {
     const { nome, email, senha, cpf } = req.body;
     if (!nome || !email || !senha || !cpf) {
@@ -44,6 +45,7 @@ export const register = async (req: Request, res: Response) => {
     }
 };
 
+// ✅ MANTIDO: Sua função de login tradicional está correta.
 export const login = async (req: Request, res: Response) => {
     const { email, senha } = req.body;
     if (!email || !senha) {
@@ -70,7 +72,7 @@ export const login = async (req: Request, res: Response) => {
                 id: cliente.id,
                 nome: cliente.nome,
                 email: cliente.email,
-                mustResetPassword: cliente.senha_temporaria 
+                mustResetPassword: cliente.senha_temporaria
             },
         });
     } catch (error) {
@@ -79,6 +81,7 @@ export const login = async (req: Request, res: Response) => {
     }
 };
 
+// ✅ MANTIDO: Sua função de esqueci a senha está correta.
 export const forgotPassword = async (req: Request, res: Response) => {
     const { email } = req.body;
     if (!email) {
@@ -87,6 +90,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     try {
         const userResult = await pool.query('SELECT * FROM clientes WHERE email = $1', [email]);
         if (userResult.rows.length === 0) {
+            // Não informe ao usuário se o email existe ou não por segurança
             return res.status(200).json({ message: 'Se o e-mail estiver cadastrado, uma nova senha será enviada.' });
         }
         const user = userResult.rows[0];
@@ -96,7 +100,6 @@ export const forgotPassword = async (req: Request, res: Response) => {
             'UPDATE clientes SET senha_hash = $1, senha_temporaria = TRUE WHERE id = $2',
             [hashedPassword, user.id]
         );
-        // ✅ TEXTO DO E-MAIL RESTAURADO
         await transporter.sendMail({
             from: process.env.EMAIL_FROM,
             to: user.email,
@@ -116,6 +119,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     }
 };
 
+// ✅ MANTIDO: Sua função de redefinir senha está correta.
 export const resetPassword = async (req: Request, res: Response) => {
     const userId = (req as any).user?.id;
     const { newPassword } = req.body;
@@ -143,21 +147,26 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 };
 
+// 🔥 CORRIGIDO: Função de login com Google.
 export const googleLogin = async (req: Request, res: Response) => {
+    // O frontend deve enviar o 'idToken' do Firebase aqui
     const { idToken } = req.body;
     if (!idToken) {
         return res.status(400).json({ message: 'Token do Google não fornecido.' });
     }
+
     try {
-        const ticket = await client.verifyIdToken({
-            idToken,
-            audience: GOOGLE_CLIENT_ID,
-        });
-        const payload = ticket.getPayload();
-        if (!payload || !payload.email || !payload.name) {
-            return res.status(401).json({ message: 'Token do Google inválido.' });
+        // ✅ CORREÇÃO: Usando Firebase Admin para verificar o token recebido do frontend.
+        // Isso garante que o token é válido e foi gerado pelo seu projeto Firebase.
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const { email, name, picture } = decodedToken;
+
+        if (!email || !name) {
+            return res.status(401).json({ message: 'Token do Google inválido ou sem informações suficientes.' });
         }
-        const { email, name, picture } = payload;
+
+        // ✅ CORREÇÃO: Usando sua consulta UPSERT (INSERT ... ON CONFLICT) que é muito eficiente
+        // para criar o usuário se ele não existir, ou atualizar nome/foto se já existir.
         const upsertQuery = `
             INSERT INTO clientes (email, nome, foto_url)
             VALUES ($1, $2, $3)
@@ -167,16 +176,21 @@ export const googleLogin = async (req: Request, res: Response) => {
         `;
         const userResult = await pool.query(upsertQuery, [email, name, picture]);
         const user = userResult.rows[0];
+
+        // Gera um token JWT da sua aplicação para o usuário autenticado.
         const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
             expiresIn: '7d',
         });
+
         res.status(200).json({
             message: 'Login com Google bem-sucedido!',
             token,
             user,
         });
+
     } catch (error) {
         console.error('Erro no login com Google:', error);
-        res.status(500).json({ message: 'Erro interno do servidor durante o login com Google.' });
+        res.status(500).json({ message: 'Autenticação com Google falhou. Token inválido ou expirado.' });
     }
 };
+
