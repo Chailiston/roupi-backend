@@ -6,14 +6,16 @@ import nodemailer from 'nodemailer';
 // ✅ CORREÇÃO: Importado o Firebase Admin para verificação de token
 import { admin } from '../../config/firebaseAdmin';
 
-// Garante que o JWT_SECRET tenha um valor padrão seguro se não for definido nas variáveis de ambiente
-const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-e-dificil-de-adivinhar';
+// ✅ CORREÇÃO: Segredo JWT consistente e mais seguro.
+// Este valor DEVE ser o mesmo usado no seu authMiddleware.ts
+// O ideal é configurar esta variável no seu ambiente do Render.
+const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-e-dificil-de-adivinhar-agora-consistente';
 
 // Configuração do Nodemailer (mantida como estava)
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT),
-    secure: process.env.SMTP_SECURE === 'true', // Usar `secure: true` para a porta 465
+    secure: process.env.SMTP_SECURE === 'true',
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
@@ -90,7 +92,6 @@ export const forgotPassword = async (req: Request, res: Response) => {
     try {
         const userResult = await pool.query('SELECT * FROM clientes WHERE email = $1', [email]);
         if (userResult.rows.length === 0) {
-            // Não informe ao usuário se o email existe ou não por segurança
             return res.status(200).json({ message: 'Se o e-mail estiver cadastrado, uma nova senha será enviada.' });
         }
         const user = userResult.rows[0];
@@ -104,13 +105,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
             from: process.env.EMAIL_FROM,
             to: user.email,
             subject: 'Sua nova senha temporária - Roupp',
-            html: `
-                <p>Olá ${user.nome},</p>
-                <p>Você solicitou uma redefinição de senha. Use a senha temporária abaixo para acessar sua conta:</p>
-                <h2 style="text-align: center; letter-spacing: 2px;">${tempPassword}</h2>
-                <p>Por segurança, você será solicitado a criar uma nova senha assim que fizer o login.</p>
-                <p>Atenciosamente,<br>Equipe Roupp</p>
-            `,
+            html: `<p>Olá ${user.nome},</p><p>Sua senha temporária é: <strong>${tempPassword}</strong></p>`,
         });
         res.status(200).json({ message: 'Se o e-mail estiver cadastrado, uma nova senha será enviada.' });
     } catch (error) {
@@ -127,10 +122,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     if (!userId) {
         return res.status(401).json({ message: 'Não autorizado. Faça o login novamente.' });
     }
-    if (!newPassword) {
-        return res.status(400).json({ message: 'A nova senha é obrigatória.' });
-    }
-    if (newPassword.length < 8) {
+    if (!newPassword || newPassword.length < 8) {
         return res.status(400).json({ message: 'A nova senha deve ter pelo menos 8 caracteres.' });
     }
 
@@ -149,15 +141,12 @@ export const resetPassword = async (req: Request, res: Response) => {
 
 // 🔥 CORRIGIDO: Função de login com Google.
 export const googleLogin = async (req: Request, res: Response) => {
-    // O frontend deve enviar o 'idToken' do Firebase aqui
     const { idToken } = req.body;
     if (!idToken) {
         return res.status(400).json({ message: 'Token do Google não fornecido.' });
     }
 
     try {
-        // ✅ CORREÇÃO: Usando Firebase Admin para verificar o token recebido do frontend.
-        // Isso garante que o token é válido e foi gerado pelo seu projeto Firebase.
         const decodedToken = await admin.auth().verifyIdToken(idToken);
         const { email, name, picture } = decodedToken;
 
@@ -165,8 +154,6 @@ export const googleLogin = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'Token do Google inválido ou sem informações suficientes.' });
         }
 
-        // ✅ CORREÇÃO: Usando sua consulta UPSERT (INSERT ... ON CONFLICT) que é muito eficiente
-        // para criar o usuário se ele não existir, ou atualizar nome/foto se já existir.
         const upsertQuery = `
             INSERT INTO clientes (email, nome, foto_url)
             VALUES ($1, $2, $3)
@@ -177,7 +164,6 @@ export const googleLogin = async (req: Request, res: Response) => {
         const userResult = await pool.query(upsertQuery, [email, name, picture]);
         const user = userResult.rows[0];
 
-        // Gera um token JWT da sua aplicação para o usuário autenticado.
         const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
             expiresIn: '7d',
         });
@@ -193,4 +179,3 @@ export const googleLogin = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Autenticação com Google falhou. Token inválido ou expirado.' });
     }
 };
-
