@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkFavoriteStatus = exports.removeFavorite = exports.addFavorite = exports.listFavorites = void 0;
-const connection_1 = require("../../database/connection");
+const client_1 = require("@prisma/client");
+const prisma = new client_1.PrismaClient();
 /**
  * @route   GET /api/cliente/favoritos
  * @desc    Listar todos os produtos favoritados pelo cliente
@@ -9,34 +10,53 @@ const connection_1 = require("../../database/connection");
  */
 const listFavorites = async (req, res) => {
     const clienteId = req.user?.id;
+    if (!clienteId) {
+        return res.status(401).json({ message: 'Não autorizado.' });
+    }
     try {
-        const sql = `
-            SELECT
-                f.id_produto,
-                p.nome,
-                p.preco_base,
-                COALESCE(pp.preco_promocional, p.preco_base) AS preco_atual,
-                COALESCE(img.url, p.imagem_url) AS imagem_url,
-                l.nome AS nome_loja
-            FROM favoritos f
-            JOIN produtos p ON f.id_produto = p.id
-            JOIN lojas l ON p.id_loja = l.id
-            LEFT JOIN LATERAL (
-                SELECT url FROM produtos_imagens pi
-                WHERE pi.id_produto = p.id
-                ORDER BY pi.ordem ASC
-                LIMIT 1
-            ) img ON TRUE
-            LEFT JOIN LATERAL (
-                SELECT preco_promocional FROM precos_promocao px
-                WHERE px.id_produto = p.id AND CURRENT_DATE BETWEEN px.data_inicio AND px.data_fim
-                ORDER BY px.data_inicio DESC LIMIT 1
-            ) pp ON TRUE
-            WHERE f.id_cliente = $1 AND p.ativo = true
-            ORDER BY f.criado_em DESC;
-        `;
-        const { rows } = await connection_1.pool.query(sql, [clienteId]);
-        res.json(rows);
+        const favorites = await prisma.favoritos.findMany({
+            where: { id_cliente: clienteId },
+            include: {
+                produtos: {
+                    include: {
+                        lojas: true,
+                        produtos_imagens: {
+                            orderBy: {
+                                ordem: 'asc'
+                            },
+                            take: 1
+                        },
+                        precos_promocao: {
+                            where: {
+                                data_inicio: { lte: new Date() },
+                                data_fim: { gte: new Date() },
+                            },
+                            orderBy: {
+                                data_inicio: 'desc'
+                            },
+                            take: 1
+                        }
+                    }
+                }
+            }
+        });
+        const formattedFavorites = favorites.map((fav) => {
+            const produto = fav.produtos;
+            if (!produto || !produto.ativo)
+                return null;
+            const preco_promocional = produto.precos_promocao[0]?.preco_promocional;
+            const preco_atual = preco_promocional ?? produto.preco_base;
+            const imagem_url = produto.produtos_imagens[0]?.url || produto.imagem_url;
+            return {
+                id_produto: produto.id,
+                nome: produto.nome,
+                preco_base: produto.preco_base.toNumber(), // <-- CORRIGIDO: Converte para número
+                preco_atual: preco_atual.toNumber(), // <-- CORRIGIDO: Converte para número
+                imagem_url: imagem_url,
+                nome_loja: produto.lojas.nome
+            };
+        }).filter(Boolean);
+        res.json(formattedFavorites);
     }
     catch (error) {
         console.error('Erro ao listar favoritos:', error);
@@ -52,18 +72,29 @@ exports.listFavorites = listFavorites;
 const addFavorite = async (req, res) => {
     const clienteId = req.user?.id;
     const { produto_id } = req.body;
+    if (!clienteId) {
+        return res.status(401).json({ message: 'Não autorizado.' });
+    }
     if (!produto_id) {
         return res.status(400).json({ message: 'O ID do produto é obrigatório.' });
     }
     try {
-        // Verifica se o favorito já existe para não duplicar
-        const existingFavorite = await connection_1.pool.query('SELECT id FROM favoritos WHERE id_cliente = $1 AND id_produto = $2', [clienteId, produto_id]);
-        if (existingFavorite.rows.length > 0) {
+        const existingFavorite = await prisma.favoritos.findFirst({
+            where: {
+                id_cliente: clienteId,
+                id_produto: produto_id
+            }
+        });
+        if (existingFavorite) {
             return res.status(200).json({ message: 'Produto já está nos favoritos.' });
         }
-        const sql = 'INSERT INTO favoritos (id_cliente, id_produto) VALUES ($1, $2) RETURNING *';
-        const { rows } = await connection_1.pool.query(sql, [clienteId, produto_id]);
-        res.status(201).json(rows[0]);
+        const newFavorite = await prisma.favoritos.create({
+            data: {
+                id_cliente: clienteId,
+                id_produto: produto_id
+            }
+        });
+        res.status(201).json(newFavorite);
     }
     catch (error) {
         console.error('Erro ao adicionar favorito:', error);
@@ -78,14 +109,21 @@ exports.addFavorite = addFavorite;
  */
 const removeFavorite = async (req, res) => {
     const clienteId = req.user?.id;
-    const { productId } = req.params;
-    if (!productId) {
-        return res.status(400).json({ message: 'O ID do produto é obrigatório.' });
+    const productId = parseInt(req.params.productId, 10);
+    if (!clienteId) {
+        return res.status(401).json({ message: 'Não autorizado.' });
+    }
+    if (isNaN(productId)) {
+        return res.status(400).json({ message: 'O ID do produto é inválido.' });
     }
     try {
-        const sql = 'DELETE FROM favoritos WHERE id_cliente = $1 AND id_produto = $2';
-        const result = await connection_1.pool.query(sql, [clienteId, productId]);
-        if (result.rowCount === 0) {
+        const result = await prisma.favoritos.deleteMany({
+            where: {
+                id_cliente: clienteId,
+                id_produto: productId
+            }
+        });
+        if (result.count === 0) {
             return res.status(404).json({ message: 'Favorito não encontrado.' });
         }
         res.status(200).json({ message: 'Favorito removido com sucesso.' });
@@ -103,14 +141,21 @@ exports.removeFavorite = removeFavorite;
  */
 const checkFavoriteStatus = async (req, res) => {
     const clienteId = req.user?.id;
-    const { productId } = req.params;
-    if (!productId) {
-        return res.status(400).json({ message: 'O ID do produto é obrigatório.' });
+    const productId = parseInt(req.params.productId, 10);
+    if (!clienteId) {
+        return res.status(401).json({ message: 'Não autorizado.' });
+    }
+    if (isNaN(productId)) {
+        return res.status(400).json({ message: 'O ID do produto é inválido.' });
     }
     try {
-        const sql = 'SELECT EXISTS (SELECT 1 FROM favoritos WHERE id_cliente = $1 AND id_produto = $2)';
-        const { rows } = await connection_1.pool.query(sql, [clienteId, productId]);
-        res.json({ isFavorited: rows[0].exists });
+        const favorite = await prisma.favoritos.findFirst({
+            where: {
+                id_cliente: clienteId,
+                id_produto: productId
+            }
+        });
+        res.json({ isFavorited: !!favorite });
     }
     catch (error) {
         console.error('Erro ao verificar status do favorito:', error);

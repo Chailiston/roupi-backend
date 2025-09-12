@@ -1,40 +1,45 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-// ✅ CORREÇÃO: Segredo JWT consistente e mais seguro.
-// Este valor DEVE ser o mesmo usado no seu authController.ts
-// O ideal é configurar esta variável no seu ambiente do Render.
+// Estenda a interface Request do Express para incluir a propriedade 'user'
+declare global {
+    namespace Express {
+        interface Request {
+            user?: { id: number; email: string };
+        }
+    }
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-e-dificil-de-adivinhar-agora-consistente';
 
-interface JwtPayload {
-  id: number;
-  email: string;
-}
+export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+    // 1. Pega o token do cabeçalho de autorização
+    const authHeader = req.headers.authorization;
 
-// Permite adicionar a propriedade 'user' ao objeto Request do Express
-declare module 'express-serve-static-core' {
-  interface Request {
-    user?: { id: number };
-  }
-}
+    // 2. Verifica se o cabeçalho existe e se está no formato 'Bearer [token]'
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'Acesso negado. Nenhum token fornecido.' });
+    }
 
-export function authMiddleware(req: Request, res: Response, next: NextFunction) {
-  const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Token não fornecido ou mal formatado.' });
-  }
+    const token = authHeader.split(' ')[1];
 
-  const token = header.split(' ')[1];
-  try {
-    // Tenta verificar o token com o segredo
-    const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    
-    // Anexa o ID do usuário à requisição para ser usado nos próximos controllers
-    req.user = { id: payload.id };
-    
-    next(); // Passa para o próximo middleware ou controller
-  } catch {
-    // Se jwt.verify falhar (assinatura inválida, expirado, etc.), retorna o erro 401
-    return res.status(401).json({ error: 'Token inválido.' });
-  }
-}
+    // 3. Verifica se o token existe após o 'Bearer'
+    if (!token) {
+        return res.status(401).json({ message: 'Acesso negado. Token mal formatado.' });
+    }
+
+    try {
+        // 4. Tenta verificar o token com o segredo
+        const decoded = jwt.verify(token, JWT_SECRET) as { id: number; email: string; iat: number; exp: number };
+        
+        // 5. Anexa os dados do usuário decodificados ao objeto 'req'
+        req.user = { id: decoded.id, email: decoded.email };
+        
+        // 6. Passa para a próxima função (o controller)
+        next();
+    } catch (error) {
+        // 7. Se a verificação falhar (token inválido, expirado, etc.), retorna um erro
+        console.error('Erro de autenticação:', error);
+        return res.status(401).json({ message: 'Token inválido ou expirado.' });
+    }
+};

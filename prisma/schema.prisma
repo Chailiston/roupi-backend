@@ -31,6 +31,9 @@ model avaliacoes_loja {
   resposta_loja String?
   clientes      clientes  @relation(fields: [id_cliente], references: [id], onDelete: Cascade, onUpdate: NoAction)
   lojas         lojas     @relation(fields: [id_loja], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([id_cliente], map: "idx_avaliacoes_loja_id_cliente")
+  @@index([id_loja], map: "idx_avaliacoes_loja_id_loja")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -45,6 +48,9 @@ model avaliacoes_produto {
   resposta_loja String?
   clientes      clientes  @relation(fields: [id_cliente], references: [id], onDelete: Cascade, onUpdate: NoAction)
   produtos      produtos  @relation(fields: [id_produto], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([id_cliente], map: "idx_avaliacoes_produto_id_cliente")
+  @@index([id_produto], map: "idx_avaliacoes_produto_id_produto")
 }
 
 model chamados {
@@ -66,9 +72,11 @@ model clientes {
   email              String               @unique @db.VarChar(100)
   telefone           String?              @db.VarChar(20)
   cpf                String?              @unique @db.VarChar(14)
-  senha_hash         String
+  senha_hash         String?
   criado_em          DateTime?            @default(now()) @db.Timestamp(6)
   atualizado_em      DateTime?            @default(now()) @db.Timestamp(6)
+  foto_url           String?
+  senha_temporaria   Boolean?             @default(false)
   avaliacoes_loja    avaliacoes_loja[]
   avaliacoes_produto avaliacoes_produto[]
   chamados           chamados[]
@@ -77,6 +85,9 @@ model clientes {
   notificacoes       notificacoes[]
   pedidos            pedidos[]
   tokens_push        tokens_push[]
+
+  @@index([cpf], map: "idx_clientes_cpf")
+  @@index([email], map: "idx_clientes_email")
 }
 
 model dados_bancarios_loja {
@@ -110,8 +121,11 @@ model enderecos_cliente {
   criado_em   DateTime? @default(now()) @db.Timestamp(6)
   latitude    Float?
   longitude   Float?
+  ativo       Boolean?  @default(true)
   clientes    clientes  @relation(fields: [id_cliente], references: [id], onDelete: Cascade, onUpdate: NoAction)
   pedidos     pedidos[]
+
+  @@index([id_cliente], map: "idx_enderecos_cliente_id_cliente")
 }
 
 model estoque_variacao {
@@ -132,6 +146,8 @@ model favoritos {
   produtos   produtos  @relation(fields: [id_produto], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([id_cliente, id_produto])
+  @@index([id_cliente], map: "idx_favoritos_id_cliente")
+  @@index([id_produto], map: "idx_favoritos_id_produto")
 }
 
 model itens_pedido {
@@ -148,6 +164,9 @@ model itens_pedido {
   pedidos           pedidos            @relation(fields: [id_pedido], references: [id], onDelete: Cascade, onUpdate: NoAction)
   produtos          produtos           @relation(fields: [id_produto], references: [id], onDelete: NoAction, onUpdate: NoAction)
   variacoes_produto variacoes_produto? @relation(fields: [id_variacao], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([id_pedido], map: "idx_itens_pedido_id_pedido")
+  @@index([id_produto], map: "idx_itens_pedido_id_produto")
 }
 
 model logs_admin {
@@ -176,6 +195,7 @@ model loja_payment_settings {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model lojas {
   id                       Int                     @id @default(autoincrement())
   nome                     String                  @db.VarChar(100)
@@ -215,6 +235,8 @@ model lojas {
   pedidos                  pedidos[]
   produtos                 produtos[]
   tokens_push_loja         tokens_push_loja[]
+
+  @@index([ativo], map: "idx_lojas_ativo")
 }
 
 model mensagens_chamado {
@@ -237,20 +259,22 @@ model notificacoes {
 }
 
 model pagamentos {
-  id                  Int       @id @default(autoincrement())
-  id_pedido           Int
-  metodo_pagamento    String?   @db.VarChar(30)
-  status_pagamento    String?   @db.VarChar(30)
-  url_pagamento       String?
-  qr_code             String?
-  criado_em           DateTime? @default(now()) @db.Timestamp(6)
-  provider_payment_id String?   @db.VarChar
-  provider_charge_id  String?   @db.VarChar
-  provider_fee_amount Decimal?  @db.Decimal(12, 2)
-  platform_fee_amount Decimal?  @db.Decimal(12, 2)
-  transfer_id         String?   @db.VarChar
-  paid_at             DateTime? @db.Timestamptz(6)
-  pedidos             pedidos   @relation(fields: [id_pedido], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id                       Int       @id @default(autoincrement())
+  id_pedido                Int
+  metodo_pagamento         String?   @db.VarChar(30)
+  status_pagamento         String?   @db.VarChar(30)
+  url_pagamento            String?
+  qr_code                  String?
+  criado_em                DateTime? @default(now()) @db.Timestamp(6)
+  provider_payment_id      String?   @db.VarChar
+  provider_charge_id       String?   @db.VarChar
+  provider_fee_amount      Decimal?  @db.Decimal(12, 2)
+  platform_fee_amount      Decimal?  @db.Decimal(12, 2)
+  transfer_id              String?   @db.VarChar
+  paid_at                  DateTime? @db.Timestamptz(6)
+  stripe_payment_intent_id String?   @db.VarChar(255)
+  stripe_client_secret     String?   @db.VarChar(255)
+  pedidos                  pedidos   @relation(fields: [id_pedido], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model password_reset_tokens {
@@ -275,11 +299,16 @@ model pedidos {
   criado_em           DateTime?          @default(now()) @db.Timestamp(6)
   atualizado_em       DateTime?          @default(now()) @db.Timestamp(6)
   previsao_entrega    DateTime?          @db.Timestamp(6)
+  valor_frete         Decimal?           @default(0.00) @db.Decimal
   itens_pedido        itens_pedido[]
   pagamentos          pagamentos[]
   clientes            clientes           @relation(fields: [id_cliente], references: [id], onDelete: NoAction, onUpdate: NoAction)
   enderecos_cliente   enderecos_cliente? @relation(fields: [id_endereco_entrega], references: [id], onDelete: NoAction, onUpdate: NoAction)
   lojas               lojas              @relation(fields: [id_loja], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([id_cliente], map: "idx_pedidos_id_cliente")
+  @@index([id_loja], map: "idx_pedidos_id_loja")
+  @@index([status], map: "idx_pedidos_status")
 }
 
 model preco_historico {
@@ -298,6 +327,9 @@ model precos_promocao {
   data_inicio       DateTime @db.Date
   data_fim          DateTime @db.Date
   produtos          produtos @relation(fields: [id_produto], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([data_inicio, data_fim], map: "idx_precos_promocao_datas")
+  @@index([id_produto], map: "idx_precos_promocao_id_produto")
 }
 
 model produto_tags {
@@ -328,6 +360,10 @@ model produtos {
   produtos_imagens   produtos_imagens[]
   promocao_produtos  promocao_produtos[]
   variacoes_produto  variacoes_produto[]
+
+  @@index([ativo], map: "idx_produtos_ativo")
+  @@index([categoria], map: "idx_produtos_categoria")
+  @@index([id_loja], map: "idx_produtos_id_loja")
 }
 
 model produtos_imagens {
@@ -392,4 +428,6 @@ model variacoes_produto {
   estoque_variacao estoque_variacao[]
   itens_pedido     itens_pedido[]
   produtos         produtos           @relation(fields: [id_produto], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([id_produto], map: "idx_variacoes_produto_id_produto")
 }
