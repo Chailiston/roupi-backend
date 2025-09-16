@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
 import { pool } from '../../database/connection';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcryptjs'; // CORREÇÃO: Importando de 'bcryptjs'
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import { admin } from '../../config/firebaseAdmin';
 
 // Garanta que o JWT_SECRET está definido no seu ambiente.
-const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-e-dificil-de-adivinhar-agora-consistente';
+const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto';
 
 // Configuração do Nodemailer
 const transporter = nodemailer.createTransport({
@@ -18,9 +18,6 @@ const transporter = nodemailer.createTransport({
         pass: process.env.SMTP_PASS,
     },
 });
-
-// ✅ AJUSTE FINAL: Uso do método pool.query() direto para máxima estabilidade.
-// Este método é mais simples e o mesmo usado na rota de teste que funcionou.
 
 export const register = async (req: Request, res: Response) => {
     const { nome, email, senha, cpf } = req.body;
@@ -101,7 +98,6 @@ export const forgotPassword = async (req: Request, res: Response) => {
         const userResult = await pool.query('SELECT * FROM clientes WHERE email = $1', [email]);
         
         if (userResult.rows.length === 0) {
-            // Não vaze informação se o usuário existe ou não.
             return res.status(200).json({ message: 'Se o e-mail estiver cadastrado, uma nova senha será enviada.' });
         }
 
@@ -114,7 +110,6 @@ export const forgotPassword = async (req: Request, res: Response) => {
             [hashedPassword, user.id]
         );
 
-        // O envio de e-mail pode ser demorado, não precisa travar a resposta.
         transporter.sendMail({
             from: process.env.EMAIL_FROM,
             to: user.email,
@@ -191,4 +186,3 @@ export const googleLogin = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Autenticação com Google falhou. Token inválido ou expirado.' });
     }
 };
-

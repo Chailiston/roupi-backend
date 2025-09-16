@@ -5,8 +5,8 @@ import Stripe from 'stripe';
 
 // Inicializa a Stripe com a chave secreta do seu arquivo .env
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    // ✅ CORREÇÃO: Versão da API ajustada para corresponder ao tipo esperado pelo projeto.
-    apiVersion: '2025-07-30.basil',
+    // CORREÇÃO: Versão da API ajustada para a exigida pela nova versão da biblioteca.
+    apiVersion: '2024-06-20', 
 });
 
 // Tipagem para os itens do carrinho que vêm do frontend

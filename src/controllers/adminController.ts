@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { pool } from '../database/connection';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
+
 
 // Listar todos os admins
 export const listarAdmins = async (_req: Request, res: Response) => {

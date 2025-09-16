@@ -1,10 +1,10 @@
 // src/controllers/cliente/profileController.ts
 import { Request, Response } from 'express';
 import { pool } from '../../database/connection';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcryptjs'; // CORREÇÃO: Importando de 'bcryptjs'
 
 // =====================================================================
-// ✅ FUNÇÃO AUXILIAR PARA VALIDAÇÃO DE CPF
+// FUNÇÃO AUXILIAR PARA VALIDAÇÃO DE CPF
 // =====================================================================
 /**
  * Valida um CPF brasileiro.
@@ -100,21 +100,17 @@ export const updateProfile = async (req: Request, res: Response) => {
     }
 
     try {
-        // ✅ NOVA VALIDAÇÃO: Se um CPF foi fornecido, valide-o
         if (cpf) {
-            // 1. Validar o formato do CPF
             if (!isValidCPF(cpf)) {
                 return res.status(400).json({ message: 'O CPF fornecido é inválido.' });
             }
 
-            // 2. Verificar se o CPF já está em uso por outro cliente
             const existingCpfResult = await pool.query(
                 'SELECT id FROM clientes WHERE cpf = $1 AND id != $2',
                 [cpf, clienteId]
             );
 
             if (existingCpfResult.rows.length > 0) {
-                // HTTP 409: Conflict
                 return res.status(409).json({ message: 'Este CPF já está em uso por outra conta.' });
             }
         }
@@ -144,7 +140,6 @@ export const updateProfile = async (req: Request, res: Response) => {
         });
 
     } catch (error: any) {
-        // Fallback para o caso de a constraint do banco de dados ser violada
         if (error.code === '23505' && error.constraint?.includes('cpf')) {
              return res.status(409).json({ message: 'Este CPF já está em uso por outra conta.' });
         }
@@ -202,4 +197,3 @@ export const updatePassword = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Erro interno do servidor.' });
     }
 };
-
