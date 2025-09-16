@@ -55,7 +55,7 @@ export const addAddress = async (req: Request, res: Response) => {
             where: {
                 id_cliente: clienteId,
                 rua: { equals: rua, mode: 'insensitive' },
-                numero: { equals: numero || null, mode: 'insensitive' },
+                numero: { equals: numero || null },
                 cep: cep,
                 ativo: true
             }
@@ -105,6 +105,15 @@ export const updateAddress = async (req: Request, res: Response) => {
     }
 
     try {
+        // ✅ CORREÇÃO: Verificar se o endereço existe e pertence ao usuário ANTES da transação.
+        const addressToUpdate = await prisma.enderecos_cliente.findFirst({
+            where: { id: addressId, id_cliente: clienteId }
+        });
+
+        if (!addressToUpdate) {
+            return res.status(404).json({ message: 'Endereço não encontrado ou não pertence a este usuário.' });
+        }
+
         const updatedAddress = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             if (padrao) {
                 await tx.enderecos_cliente.updateMany({
@@ -113,8 +122,9 @@ export const updateAddress = async (req: Request, res: Response) => {
                 });
             }
             
+            // ✅ CORREÇÃO: Usar apenas o ID (chave primária) na cláusula 'where' do update.
             return tx.enderecos_cliente.update({
-                where: { id: addressId, id_cliente: clienteId },
+                where: { id: addressId },
                 data: { apelido, rua, numero, complemento, bairro, cidade, estado, cep, padrao, latitude, longitude },
             });
         });
@@ -122,7 +132,7 @@ export const updateAddress = async (req: Request, res: Response) => {
         res.status(200).json(updatedAddress);
     } catch (error) {
         console.error('Erro ao atualizar endereço:', error);
-        res.status(500).json({ message: 'Endereço não encontrado ou erro interno ao atualizar.' });
+        res.status(500).json({ message: 'Erro interno ao atualizar o endereço.' });
     }
 };
 
@@ -193,8 +203,11 @@ export const deleteAddress = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Você não pode remover seu endereço padrão. Defina outro como padrão primeiro.' });
         }
 
+        // ✅ CORREÇÃO: A condição where em um update para soft delete
+        // deve ser única para evitar erros. Usar apenas o ID é suficiente
+        // pois a verificação de posse já foi feita acima.
         await prisma.enderecos_cliente.update({
-            where: { id: addressId, id_cliente: clienteId },
+            where: { id: addressId },
             data: { ativo: false, padrao: false },
         });
 
@@ -204,4 +217,3 @@ export const deleteAddress = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Erro interno ao deletar endereço.' });
     }
 };
-

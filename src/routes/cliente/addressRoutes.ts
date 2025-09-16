@@ -34,4 +34,3 @@ router.patch('/:id/set-default', setDefaultAddress);
 router.delete('/:id', deleteAddress);
 
 export default router;
-
