@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { pool } from '../../database/connection';
-import bcrypt from 'bcryptjs'; // CORREÇÃO: Importando de 'bcryptjs'
+import bcrypt from 'bcryptjs'; // Usando bcryptjs para compatibilidade
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import { admin } from '../../config/firebaseAdmin';
@@ -124,29 +124,54 @@ export const forgotPassword = async (req: Request, res: Response) => {
     }
 };
 
+/**
+ * @route POST /api/cliente/auth/reset-password
+ * @description Redefine a senha do usuário usando a senha temporária.
+ * @access Public (a autenticação é feita pela senha temporária)
+ */
 export const resetPassword = async (req: Request, res: Response) => {
-    const userId = (req as any).user?.id;
-    const { newPassword } = req.body;
+    const { email, temporaryPassword, newPassword } = req.body;
 
-    if (!userId) {
-        return res.status(401).json({ message: 'Não autorizado. Faça o login novamente.' });
+    if (!email || !temporaryPassword || !newPassword) {
+        return res.status(400).json({ message: 'E-mail, senha temporária e nova senha são obrigatórios.' });
     }
-    if (!newPassword || newPassword.length < 8) {
+    if (newPassword.length < 8) {
         return res.status(400).json({ message: 'A nova senha deve ter pelo menos 8 caracteres.' });
     }
 
     try {
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const result = await pool.query('SELECT * FROM clientes WHERE email = $1 AND senha_temporaria = TRUE', [email]);
+        if (result.rows.length === 0) {
+            return res.status(401).json({ message: 'Nenhuma solicitação de redefinição de senha pendente para este e-mail.' });
+        }
+
+        const user = result.rows[0];
+        const isTempPasswordCorrect = await bcrypt.compare(temporaryPassword, user.senha_hash);
+
+        if (!isTempPasswordCorrect) {
+            return res.status(401).json({ message: 'A senha temporária está incorreta.' });
+        }
+
+        const newHashedPassword = await bcrypt.hash(newPassword, 10);
         await pool.query(
-            'UPDATE clientes SET senha_hash = $1, senha_temporaria = FALSE WHERE id = $2',
-            [hashedPassword, userId]
+            'UPDATE clientes SET senha_hash = $1, senha_temporaria = FALSE, atualizado_em = NOW() WHERE id = $2',
+            [newHashedPassword, user.id]
         );
-        res.status(200).json({ message: 'Senha atualizada com sucesso!' });
+        
+        // Após o reset, gera um novo token para o usuário já poder navegar logado.
+        const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+
+        res.status(200).json({ 
+            message: 'Senha atualizada com sucesso!',
+            token: token // Retorna o novo token para o script de teste
+        });
+
     } catch (error) {
         console.error('Erro detalhado no resetPassword:', error);
         res.status(500).json({ message: 'Erro interno do servidor ao redefinir senha.' });
     }
 };
+
 
 export const googleLogin = async (req: Request, res: Response) => {
     const { idToken } = req.body;
@@ -186,3 +211,4 @@ export const googleLogin = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Autenticação com Google falhou. Token inválido ou expirado.' });
     }
 };
+

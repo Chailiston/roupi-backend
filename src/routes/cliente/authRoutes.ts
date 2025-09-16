@@ -6,17 +6,18 @@ import {
     forgotPassword, 
     resetPassword 
 } from '../../controllers/cliente/authController';
-import { authMiddleware } from '../../middlewares/authMiddleware';
 
 const router = Router();
 
-// As rotas estão corretas, apenas organizadas.
+// Rotas públicas
 router.post('/auth/register', register);
 router.post('/auth/login', login);
 router.post('/auth/google', googleLogin);
 router.post('/auth/forgot-password', forgotPassword);
 
-// A rota de redefinir senha continua protegida pelo middleware.
-router.post('/auth/reset-password', authMiddleware, resetPassword);
+// CORREÇÃO: Rota de redefinição de senha agora é pública,
+// pois a autenticação é feita pela própria senha temporária.
+router.post('/auth/reset-password', resetPassword);
 
 export default router;
+
