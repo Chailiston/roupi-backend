@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const chamadoController_1 = require("../controllers/chamadoController");
+const router = (0, express_1.Router)();
+router.post('/chamados', chamadoController_1.createChamado);
+router.get('/chamados/:cliente_id', chamadoController_1.getChamadosPorCliente);
+router.get('/chamados/:chamado_id/mensagens', chamadoController_1.getMensagensChamado);
+router.post('/chamados/mensagens', chamadoController_1.createMensagemChamado);
+exports.default = router;

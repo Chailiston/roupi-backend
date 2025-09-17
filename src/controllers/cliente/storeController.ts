@@ -1,11 +1,17 @@
-// src/controllers/cliente/storeController.ts
 import { Request, Response } from 'express';
 import { pool } from '../../database/connection';
 
 // --- Helpers ---
+// ✅ MELHORIA: A função foi tornada mais robusta para aceitar tanto '.' quanto ',' como separador decimal.
 function toNum(v: any): number | null {
+    // Retorna nulo se o valor for inválido, nulo ou uma string vazia.
     if (v === undefined || v === null || v === '') return null;
-    const n = Number(v);
+
+    // Converte para string e substitui vírgula por ponto para padronizar o formato numérico.
+    const sanitizedValue = String(v).replace(',', '.');
+    const n = Number(sanitizedValue);
+
+    // Retorna o número apenas se a conversão for bem-sucedida, senão retorna nulo.
     return Number.isFinite(n) ? n : null;
 }
 
@@ -18,14 +24,15 @@ const haversineDistance = `
   ROUND(
     (
       6371 * acos(
-        cos(radians($_LAT_)) * cos(radians(l.latitude)) * cos(radians(l.longitude) - radians($_LNG_)) + 
-        sin(radians($_LAT_)) * sin(radians(l.latitude))
+        LEAST(1.0, GREATEST(-1.0,
+          cos(radians($_LAT_)) * cos(radians(l.latitude)) * cos(radians(l.longitude) - radians($_LNG_)) + 
+          sin(radians($_LAT_)) * sin(radians(l.latitude))
+        ))
       )
     )::numeric, 1
   )
 `;
 
-// [CORREÇÃO] Adicionamos uma interface para definir o formato de um produto
 interface Product {
     id: number;
     nome: string;
@@ -116,7 +123,6 @@ export async function getStoreDetails(req: Request, res: Response) {
 
         const productsResult = await pool.query(productsSql, productParams);
 
-        // [CORREÇÃO] Tipamos a variável 'offers' para que o TS saiba o que esperar
         const offers: Product[] = [];
         const productsByCategory = productsResult.rows.reduce((acc, product: Product) => {
             if (product.preco_atual < product.preco_base) {
@@ -149,6 +155,6 @@ export async function getStoreDetails(req: Request, res: Response) {
 
     } catch (err) {
         console.error('getStoreDetails ->', err);
-        return res.status(500).json({ error: 'Erro ao buscar detalhes da loja.' });
+        return res.status(500).json({ error: 'Erro ao carregar a loja.' });
     }
 }

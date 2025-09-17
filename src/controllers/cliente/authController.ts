@@ -1,14 +1,13 @@
 import { Request, Response } from 'express';
 import { pool } from '../../database/connection';
-import bcrypt from 'bcryptjs'; // Usando bcryptjs para compatibilidade
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import { admin } from '../../config/firebaseAdmin';
 
-// Garanta que o JWT_SECRET está definido no seu ambiente.
-const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto';
+// CORREÇÃO DEFINITIVA: Usar um segredo consistente e forte. Este deve ser o mesmo do middleware.
+const JWT_SECRET = process.env.JWT_SECRET || 'segredo-consistente-para-gerar-e-validar-tokens-jwt-2025';
 
-// Configuração do Nodemailer
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT),
@@ -24,22 +23,18 @@ export const register = async (req: Request, res: Response) => {
     if (!nome || !email || !senha || !cpf) {
         return res.status(400).json({ message: 'Todos os campos são obrigatórios.' });
     }
-
     try {
         const existingUserResult = await pool.query('SELECT id FROM clientes WHERE email = $1 OR cpf = $2', [email, cpf]);
         if (existingUserResult.rows.length > 0) {
             return res.status(409).json({ message: 'E-mail ou CPF já está em uso.' });
         }
-
         const hashedPassword = await bcrypt.hash(senha, 10);
         const newUserResult = await pool.query(
             'INSERT INTO clientes (nome, email, senha_hash, cpf) VALUES ($1, $2, $3, $4) RETURNING id, nome, email',
             [nome, email, hashedPassword, cpf]
         );
-        
         const newCliente = newUserResult.rows[0];
         const token = jwt.sign({ id: newCliente.id, email: newCliente.email }, JWT_SECRET, { expiresIn: '7d' });
-        
         res.status(201).json({ message: 'Usuário registrado com sucesso!', token, user: newCliente });
     } catch (error) {
         console.error('Erro detalhado no registro:', error);
@@ -52,27 +47,20 @@ export const login = async (req: Request, res: Response) => {
     if (!email || !senha) {
         return res.status(400).json({ message: 'E-mail e senha são obrigatórios.' });
     }
-
     try {
         const result = await pool.query('SELECT * FROM clientes WHERE email = $1', [email]);
-        
         if (result.rows.length === 0) {
             return res.status(401).json({ message: 'Credenciais inválidas.' });
         }
-        
         const cliente = result.rows[0];
-
         if (!cliente.senha_hash) {
             return res.status(401).json({ message: 'Use o login com Google para esta conta.' });
         }
-
         const isPasswordCorrect = await bcrypt.compare(senha, cliente.senha_hash);
         if (!isPasswordCorrect) {
             return res.status(401).json({ message: 'Credenciais inválidas.' });
         }
-
         const token = jwt.sign({ id: cliente.id, email: cliente.email }, JWT_SECRET, { expiresIn: '7d' });
-        
         res.status(200).json({
             message: 'Login bem-sucedido!',
             token,
@@ -96,11 +84,9 @@ export const forgotPassword = async (req: Request, res: Response) => {
     }
     try {
         const userResult = await pool.query('SELECT * FROM clientes WHERE email = $1', [email]);
-        
         if (userResult.rows.length === 0) {
             return res.status(200).json({ message: 'Se o e-mail estiver cadastrado, uma nova senha será enviada.' });
         }
-
         const user = userResult.rows[0];
         const tempPassword = Math.random().toString(36).slice(-8);
         const hashedPassword = await bcrypt.hash(tempPassword, 10);
@@ -124,47 +110,26 @@ export const forgotPassword = async (req: Request, res: Response) => {
     }
 };
 
-/**
- * @route POST /api/cliente/auth/reset-password
- * @description Redefine a senha do usuário usando a senha temporária.
- * @access Public (a autenticação é feita pela senha temporária)
- */
 export const resetPassword = async (req: Request, res: Response) => {
-    const { email, temporaryPassword, newPassword } = req.body;
+    const userId = req.user?.id;
+    const { newPassword } = req.body;
 
-    if (!email || !temporaryPassword || !newPassword) {
-        return res.status(400).json({ message: 'E-mail, senha temporária e nova senha são obrigatórios.' });
+    if (!userId) {
+        return res.status(401).json({ message: 'Não autorizado. Faça o login novamente.' });
     }
-    if (newPassword.length < 8) {
-        return res.status(400).json({ message: 'A nova senha deve ter pelo menos 8 caracteres.' });
+    if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ message: 'A nova senha deve ter pelo menos 6 caracteres.' });
     }
 
     try {
-        const result = await pool.query('SELECT * FROM clientes WHERE email = $1 AND senha_temporaria = TRUE', [email]);
-        if (result.rows.length === 0) {
-            return res.status(401).json({ message: 'Nenhuma solicitação de redefinição de senha pendente para este e-mail.' });
-        }
-
-        const user = result.rows[0];
-        const isTempPasswordCorrect = await bcrypt.compare(temporaryPassword, user.senha_hash);
-
-        if (!isTempPasswordCorrect) {
-            return res.status(401).json({ message: 'A senha temporária está incorreta.' });
-        }
-
-        const newHashedPassword = await bcrypt.hash(newPassword, 10);
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        
         await pool.query(
             'UPDATE clientes SET senha_hash = $1, senha_temporaria = FALSE, atualizado_em = NOW() WHERE id = $2',
-            [newHashedPassword, user.id]
+            [hashedPassword, userId]
         );
-        
-        // Após o reset, gera um novo token para o usuário já poder navegar logado.
-        const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
 
-        res.status(200).json({ 
-            message: 'Senha atualizada com sucesso!',
-            token: token // Retorna o novo token para o script de teste
-        });
+        res.status(200).json({ message: 'Senha atualizada com sucesso!' });
 
     } catch (error) {
         console.error('Erro detalhado no resetPassword:', error);
@@ -172,21 +137,17 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 };
 
-
 export const googleLogin = async (req: Request, res: Response) => {
     const { idToken } = req.body;
     if (!idToken) {
         return res.status(400).json({ message: 'Token do Google não fornecido.' });
     }
-
     try {
         const decodedToken = await admin.auth().verifyIdToken(idToken);
         const { email, name, picture } = decodedToken;
-
         if (!email || !name) {
             return res.status(401).json({ message: 'Token do Google inválido ou sem informações suficientes.' });
         }
-
         const upsertQuery = `
             INSERT INTO clientes (email, nome, foto_url)
             VALUES ($1, $2, $3)
@@ -196,11 +157,7 @@ export const googleLogin = async (req: Request, res: Response) => {
         `;
         const userResult = await pool.query(upsertQuery, [email, name, picture]);
         const user = userResult.rows[0];
-
-        const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
-            expiresIn: '7d',
-        });
-
+        const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
         res.status(200).json({
             message: 'Login com Google bem-sucedido!',
             token,

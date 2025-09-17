@@ -10,9 +10,13 @@ declare global {
     }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-e-dificil-de-adivinhar-agora-consistente';
+// CORREÇÃO DEFINITIVA: Usar um segredo consistente e forte. Este deve ser o mesmo do authController.
+const JWT_SECRET = process.env.JWT_SECRET || 'segredo-consistente-para-gerar-e-validar-tokens-jwt-2025';
 
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+    // PASSO DE DIAGNÓSTICO: Esta mensagem deve aparecer no seu terminal do servidor.
+    console.log("--- EXECUTANDO O MIDDLEWARE DE AUTENTICAÇÃO (VERSÃO CORRIGIDA) ---");
+
     // 1. Pega o token do cabeçalho de autorização
     const authHeader = req.headers.authorization;
 
@@ -43,3 +47,4 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
         return res.status(401).json({ message: 'Token inválido ou expirado.' });
     }
 };
+

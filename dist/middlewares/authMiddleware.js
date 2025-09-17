@@ -5,8 +5,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authMiddleware = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const JWT_SECRET = process.env.JWT_SECRET || 'seu-segredo-super-secreto-e-dificil-de-adivinhar-agora-consistente';
+// CORREÇÃO DEFINITIVA: Usar um segredo consistente e forte. Este deve ser o mesmo do authController.
+const JWT_SECRET = process.env.JWT_SECRET || 'segredo-consistente-para-gerar-e-validar-tokens-jwt-2025';
 const authMiddleware = (req, res, next) => {
+    // PASSO DE DIAGNÓSTICO: Esta mensagem deve aparecer no seu terminal do servidor.
+    console.log("--- EXECUTANDO O MIDDLEWARE DE AUTENTICAÇÃO (VERSÃO CORRIGIDA) ---");
     // 1. Pega o token do cabeçalho de autorização
     const authHeader = req.headers.authorization;
     // 2. Verifica se o cabeçalho existe e se está no formato 'Bearer [token]'
