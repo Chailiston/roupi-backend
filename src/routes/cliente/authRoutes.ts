@@ -15,16 +15,15 @@ const router = Router();
 // =====================================================================
 
 // --- Rotas Públicas (não precisam de token) ---
-router.post('/auth/register', register);
-router.post('/auth/login', login);
-router.post('/auth/google', googleLogin);
-router.post('/auth/forgot-password', forgotPassword);
+// CORREÇÃO: Removido o prefixo '/auth' daqui, pois ele já está no server.ts
+router.post('/register', register);
+router.post('/login', login);
+router.post('/google', googleLogin);
+router.post('/forgot-password', forgotPassword);
 
 
 // --- Rota Protegida (precisa de token) ---
-
-// O usuário DEVE estar logado (com o token da senha temporária) para poder redefinir a senha.
-// Por isso, adicionamos o 'authMiddleware' aqui.
-router.post('/auth/reset-password', authMiddleware, resetPassword);
+// CORREÇÃO: Removido o prefixo '/auth' daqui
+router.post('/reset-password', authMiddleware, resetPassword);
 
 export default router;
