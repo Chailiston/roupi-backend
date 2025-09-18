@@ -305,10 +305,12 @@ model pedidos {
   clientes            clientes           @relation(fields: [id_cliente], references: [id], onDelete: NoAction, onUpdate: NoAction)
   enderecos_cliente   enderecos_cliente? @relation(fields: [id_endereco_entrega], references: [id], onDelete: NoAction, onUpdate: NoAction)
   lojas               lojas              @relation(fields: [id_loja], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  mp_preference_id    String?
 
   @@index([id_cliente], map: "idx_pedidos_id_cliente")
   @@index([id_loja], map: "idx_pedidos_id_loja")
   @@index([status], map: "idx_pedidos_status")
+
 }
 
 model preco_historico {

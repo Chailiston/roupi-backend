@@ -1,20 +1,35 @@
 // src/routes/cliente/checkoutRoutes.ts
 import { Router } from 'express';
-import { getCheckoutDetails, placeOrder } from '../../controllers/cliente/checkoutController';
+// ✅ 1. IMPORTAR OS MÉTODOS ATUALIZADOS DO CONTROLLER
+import { 
+    getCheckoutDetails, 
+    createPaymentPreference 
+} from '../../controllers/cliente/checkoutController';
 import { authMiddleware } from '../../middlewares/authMiddleware';
 
 const router = Router();
 
 // =====================================================================
-// ROTAS DE CHECKOUT E PEDIDOS - PROTEGIDAS POR AUTENTICAÇÃO
+// ROTAS DE CHECKOUT - PROTEGIDAS POR AUTENTICAÇÃO
 // =====================================================================
 
-// Rota para buscar os dados iniciais para a tela de checkout (endereços, etc.)
-// O middleware `authMiddleware` é executado primeiro para garantir que o utilizador está logado.
-router.get('/checkout/details', authMiddleware, getCheckoutDetails);
+// Aplica o middleware de autenticação a todas as rotas deste ficheiro
+router.use(authMiddleware);
 
-// Rota para criar um novo pedido a partir do carrinho
-// Também protegida, pois apenas um utilizador logado pode fazer um pedido.
-router.post('/orders', authMiddleware, placeOrder);
+// Rota para buscar os dados iniciais para a tela de checkout (endereços, etc.)
+router.get('/details', getCheckoutDetails);
+
+// ✅ 2. NOVA ROTA PARA CRIAR A PREFERÊNCIA DE PAGAMENTO (CHECKOUT PRO)
+// Esta é a rota que o seu app vai chamar para obter o link de pagamento do Mercado Pago.
+router.post('/create-preference', createPaymentPreference);
+
+
+// =====================================================================
+// 🚨 ROTA ANTIGA (PAYMENT BRICK) - AGORA DESCONTINUADA
+// =====================================================================
+// A rota antiga '/orders' foi removida para evitar o seu uso.
+// Ela foi substituída pela rota '/create-preference' acima.
+// router.post('/orders', placeOrder);
 
 export default router;
+
