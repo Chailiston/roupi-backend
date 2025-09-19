@@ -14,7 +14,7 @@ import produtoImagemRoutes from './routes/produtoImagemRoutes';
 import variacaoProdutoRoutes from './routes/variacoesRoutes';
 import pedidoRoutes from './routes/pedidoRoutes';
 import promocoesRoutes from './routes/promocoes';
-import uploadRoutes from './routes/uploadRoutes'; // Upload é mais genérico, mas usado pelo lojista
+import uploadRoutes from './routes/uploadRoutes';
 
 // Rotas da API do Cliente
 import authRoutesCliente from './routes/cliente/authRoutes';
@@ -30,8 +30,8 @@ import profileRoutesCliente from './routes/cliente/profileRoutes';
 import favoriteRoutesCliente from './routes/cliente/favoriteRoutes';
 import chamadoRoutesCliente from './routes/chamadoRoutes';
 
-// ✅ CORREÇÃO: O caminho foi ajustado para encontrar o arquivo dentro da pasta 'cliente'.
-import pagamentosRoutes from './routes/cliente/pagamentosRoutes';
+// ✅ CORREÇÃO: Importa os routers de pagamento separados
+import { pagamentosRoutesPrivadas, pagamentosRoutesPublicas } from './routes/cliente/pagamentosRoutes';
 
 // Rotas de Admin / Relatórios
 import adminRoutes from './routes/adminRoutes';
@@ -61,9 +61,8 @@ app.get('/api/test-db', async (_req, res) => {
   }
 });
 
-// ✅ Rota de Webhook (DEVE SER PÚBLICA E USAR O CAMINHO CORRETO)
-// O ideal é que esta rota seja genérica, como /api/pagamentos, pois não é exclusiva do cliente.
-app.use('/api/pagamentos', pagamentosRoutes);
+// ✅ Rota de Webhook (PÚBLICA)
+app.use('/api/pagamentos', pagamentosRoutesPublicas);
 
 
 // --- API PÚBLICA DO CLIENTE ---
@@ -75,16 +74,14 @@ app.use('/api/cliente/lojas', storeRoutesCliente);
 app.use('/api/cliente/delivery', deliveryRoutesCliente);
 
 // --- API PÚBLICA DA LOJA ---
-app.use('/api/auth', authRoutesLoja); // Login do lojista
-app.use('/api/lojas', lojaRoutes); // Detalhes públicos da loja
+app.use('/api/auth', authRoutesLoja);
+app.use('/api/lojas', lojaRoutes);
 
 // --- ROTAS PRIVADAS (EXIGEM AUTENTICAÇÃO ESPECÍFICA) ---
-// O middleware de autenticação agora é aplicado diretamente dentro de cada arquivo de rota,
-// tornando o sistema mais modular e claro.
-
 console.log("Registrando rotas privadas...");
 
 // --- API PRIVADA DO CLIENTE ---
+app.use('/api/cliente/pagamentos', pagamentosRoutesPrivadas); // ✅ Rota de criação de preferência (PRIVADA)
 app.use('/api/cliente/checkout', checkoutRoutesCliente);
 app.use('/api/cliente/orders', orderRoutesCliente);
 app.use('/api/cliente/profile', profileRoutesCliente);
@@ -97,14 +94,14 @@ app.use('/api/lojas/:lojaId/produtos/:produtoId/variacoes', variacaoProdutoRoute
 app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens', produtoImagemRoutes);
 app.use('/api/lojas/:lojaId/produtos', produtoRoutes);
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes);
-app.use('/api/lojas/:lojaId/promocoes', promocoesRoutes); // Assumindo que gerenciar promoções é privado
+app.use('/api/lojas/:lojaId/promocoes', promocoesRoutes);
 
 // --- ROTAS GENÉRICAS / ADMIN ---
-app.use('/api/upload', uploadRoutes); // Pode precisar de auth de lojista
-app.use('/api/admins', adminRoutes); // Precisa de auth de admin
-app.use('/api/relatorios', relatorioRoutes); // Precisa de auth de admin
+app.use('/api/upload', uploadRoutes);
+app.use('/api/admins', adminRoutes);
+app.use('/api/relatorios', relatorioRoutes);
 
-// --- HANDLERS DE ERRO (DEVEM SER OS ÚLTIMOS) ---
+// --- HANDLERS DE ERRO ---
 app.use((_req, res) => {
   res.status(404).json({ error: 'Endpoint não encontrado.' });
 });
@@ -118,4 +115,3 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 app.listen(port, () => {
   console.log(`Servidor rodando com sucesso em http://localhost:${port}`);
 });
-
