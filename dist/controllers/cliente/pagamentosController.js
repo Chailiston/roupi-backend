@@ -96,6 +96,9 @@ const createPaymentPreference = async (req, res) => {
             }
             console.log('ETAPA 7: Transação concluída com sucesso.');
             return { init_point: preferenceResponse.init_point, preference_id: preferenceResponse.id };
+        }, {
+            maxWait: 15000, // Tempo máximo de espera para iniciar a transação (15s)
+            timeout: 30000, // Tempo máximo que a transação pode durar (30s)
         });
         console.log('ETAPA 8: Enviando resposta para o cliente...');
         res.status(201).json(result);
