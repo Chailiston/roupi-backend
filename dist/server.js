@@ -8,7 +8,8 @@ const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 const connection_1 = require("./database/connection");
-// --- ROTAS DA LOJA ---
+// --- ARQUIVOS DE ROTAS ---
+// Rotas da Loja (Dashboard / App do Lojista)
 const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
 const lojaRoutes_1 = __importDefault(require("./routes/lojaRoutes"));
 const produtoRoutes_1 = __importDefault(require("./routes/produtoRoutes"));
@@ -16,84 +17,85 @@ const produtoImagemRoutes_1 = __importDefault(require("./routes/produtoImagemRou
 const variacoesRoutes_1 = __importDefault(require("./routes/variacoesRoutes"));
 const pedidoRoutes_1 = __importDefault(require("./routes/pedidoRoutes"));
 const promocoes_1 = __importDefault(require("./routes/promocoes"));
-// --- ROTAS DO CLIENTE (ORGANIZADAS) ---
+const uploadRoutes_1 = __importDefault(require("./routes/uploadRoutes")); // Upload é mais genérico, mas usado pelo lojista
+// Rotas da API do Cliente
+const authRoutes_2 = __importDefault(require("./routes/cliente/authRoutes"));
 const initialRoutes_1 = __importDefault(require("./routes/cliente/initialRoutes"));
 const productRoutes_1 = __importDefault(require("./routes/cliente/productRoutes"));
 const searchRoutes_1 = __importDefault(require("./routes/cliente/searchRoutes"));
 const storeRoutes_1 = __importDefault(require("./routes/cliente/storeRoutes"));
 const deliveryRoutes_1 = __importDefault(require("./routes/cliente/deliveryRoutes"));
-const authRoutes_2 = __importDefault(require("./routes/cliente/authRoutes"));
 const checkoutRoutes_1 = __importDefault(require("./routes/cliente/checkoutRoutes"));
 const addressRoutes_1 = __importDefault(require("./routes/cliente/addressRoutes"));
 const orderRoutes_1 = __importDefault(require("./routes/cliente/orderRoutes"));
 const profileRoutes_1 = __importDefault(require("./routes/cliente/profileRoutes"));
-const favoriteRoutes_1 = __importDefault(require("./routes/cliente/favoriteRoutes")); // ✅ 1. IMPORTAÇÃO DAS ROTAS DE FAVORITOS
-// --- ROTAS GENÉRICAS E ADMIN ---
-const itemPedidoRoutes_1 = __importDefault(require("./routes/itemPedidoRoutes"));
-const avaliacaoProdutoRoutes_1 = __importDefault(require("./routes/avaliacaoProdutoRoutes"));
-const favoritoRoutes_1 = __importDefault(require("./routes/favoritoRoutes"));
-const avaliacaoLojaRoutes_1 = __importDefault(require("./routes/avaliacaoLojaRoutes"));
-const notificacaoRoutes_1 = __importDefault(require("./routes/notificacaoRoutes"));
+const favoriteRoutes_1 = __importDefault(require("./routes/cliente/favoriteRoutes"));
 const chamadoRoutes_1 = __importDefault(require("./routes/chamadoRoutes"));
+// Rotas de Admin / Relatórios
 const adminRoutes_1 = __importDefault(require("./routes/adminRoutes"));
 const relatorioRoutes_1 = __importDefault(require("./routes/relatorioRoutes"));
-const uploadRoutes_1 = __importDefault(require("./routes/uploadRoutes"));
+// --- CONFIGURAÇÃO INICIAL ---
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 3001;
+// --- MIDDLEWARES GLOBAIS ---
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
-// Rotas de teste
+app.use('/uploads', express_1.default.static(path_1.default.resolve(__dirname, '..', 'uploads')));
+// --- ROTAS PÚBLICAS (NÃO EXIGEM AUTENTICAÇÃO) ---
+console.log("Registrando rotas públicas...");
 app.get('/', (_req, res) => res.send('🚀 Backend ROUPPI rodando com sucesso!'));
 app.get('/api/test-db', async (_req, res) => {
     try {
         const result = await connection_1.pool.query('SELECT NOW()');
         res.json(result.rows[0]);
     }
-    catch {
+    catch (error) {
+        console.error('Erro de conexão com o banco de dados:', error);
         res.status(500).json({ error: 'Erro ao consultar o banco' });
     }
 });
-// --- REGISTO DAS ROTAS ---
-// API da Loja (para o painel do vendedor)
-app.use('/api/auth', authRoutes_1.default); // Autenticação da Loja
-app.use('/api/lojas', lojaRoutes_1.default);
-app.use('/api/lojas/:lojaId/produtos/:produtoId/variacoes', variacoesRoutes_1.default);
-app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens', produtoImagemRoutes_1.default);
-app.use('/api/lojas/:lojaId/produtos', produtoRoutes_1.default);
-app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes_1.default);
-// API do Cliente (para o aplicativo)
-app.use('/api/cliente', authRoutes_2.default);
-app.use('/api/cliente', checkoutRoutes_1.default);
-app.use('/api/cliente', orderRoutes_1.default);
-app.use('/api/cliente/profile', profileRoutes_1.default);
-app.use('/api/cliente/favoritos', favoriteRoutes_1.default); // ✅ 2. REGISTRO DAS ROTAS DE FAVORITOS
-app.use('/api/cliente/enderecos', addressRoutes_1.default);
+// --- API PÚBLICA DO CLIENTE ---
+app.use('/api/cliente/auth', authRoutes_2.default);
+app.use('/api/cliente/initial', initialRoutes_1.default);
 app.use('/api/cliente/search', searchRoutes_1.default);
 app.use('/api/cliente/produtos', productRoutes_1.default);
 app.use('/api/cliente/lojas', storeRoutes_1.default);
 app.use('/api/cliente/delivery', deliveryRoutes_1.default);
-app.use('/api/cliente', initialRoutes_1.default);
-// Rotas Genéricas e Admin
-app.use('/api/itens-pedido', itemPedidoRoutes_1.default);
-app.use('/api/avaliacoes-produto', avaliacaoProdutoRoutes_1.default);
-app.use('/api/favoritos', favoritoRoutes_1.default);
-app.use('/api/avaliacoes-loja', avaliacaoLojaRoutes_1.default);
-app.use('/api/notificacoes', notificacaoRoutes_1.default);
-app.use('/api/chamados', chamadoRoutes_1.default);
-app.use('/api/admins', adminRoutes_1.default);
-app.use('/api/relatorios', relatorioRoutes_1.default);
-app.use('/api/upload', uploadRoutes_1.default);
-app.use('/api/promocoes', promocoes_1.default);
-// Uploads estáticos e Handlers de Erro
-app.use('/uploads', express_1.default.static(path_1.default.resolve(__dirname, '..', 'uploads')));
-app.use((_, res) => res.status(404).json({ error: 'Endpoint não encontrado.' }));
-app.use((err, _req, res, _next) => {
-    console.error(err);
-    res.status(500).json({ error: 'Erro interno de servidor.' });
+// --- API PÚBLICA DA LOJA ---
+app.use('/api/auth', authRoutes_1.default); // Login do lojista
+app.use('/api/lojas', lojaRoutes_1.default); // Detalhes públicos da loja
+// --- ROTAS PRIVADAS (EXIGEM AUTENTICAÇÃO ESPECÍFICA) ---
+// O middleware de autenticação agora é aplicado diretamente dentro de cada arquivo de rota,
+// tornando o sistema mais modular e claro.
+console.log("Registrando rotas privadas...");
+// --- API PRIVADA DO CLIENTE ---
+app.use('/api/cliente/checkout', checkoutRoutes_1.default);
+app.use('/api/cliente/orders', orderRoutes_1.default);
+app.use('/api/cliente/profile', profileRoutes_1.default);
+app.use('/api/cliente/favoritos', favoriteRoutes_1.default);
+app.use('/api/cliente/enderecos', addressRoutes_1.default);
+app.use('/api/cliente/chamados', chamadoRoutes_1.default);
+// --- API PRIVADA DA LOJA ---
+app.use('/api/lojas/:lojaId/produtos/:produtoId/variacoes', variacoesRoutes_1.default);
+app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens', produtoImagemRoutes_1.default);
+app.use('/api/lojas/:lojaId/produtos', produtoRoutes_1.default);
+app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes_1.default);
+app.use('/api/lojas/:lojaId/promocoes', promocoes_1.default); // Assumindo que gerenciar promoções é privado
+// --- ROTAS GENÉRICAS / ADMIN ---
+app.use('/api/upload', uploadRoutes_1.default); // Pode precisar de auth de lojista
+app.use('/api/admins', adminRoutes_1.default); // Precisa de auth de admin
+app.use('/api/relatorios', relatorioRoutes_1.default); // Precisa de auth de admin
+// --- HANDLERS DE ERRO (DEVEM SER OS ÚLTIMOS) ---
+app.use((_req, res) => {
+    res.status(404).json({ error: 'Endpoint não encontrado.' });
 });
-// Inicia o servidor
+app.use((err, _req, res, _next) => {
+    console.error("ERRO NÃO TRATADO:", err.stack || err);
+    res.status(500).json({ error: 'Erro interno do servidor.' });
+});
+// --- INICIALIZAÇÃO DO SERVIDOR ---
 app.listen(port, () => {
-    console.log(`Servidor rodando em http://localhost:${port}`);
+    console.log(`Servidor rodando com sucesso em http://localhost:${port}`);
 });

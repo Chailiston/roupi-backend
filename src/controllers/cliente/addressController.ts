@@ -4,6 +4,17 @@ import { PrismaClient, Prisma } from '@prisma/client';
 const prisma = new PrismaClient();
 const MAX_ADDRESSES_PER_USER = 5;
 
+// ✅ SOLUÇÃO: Função auxiliar para converter coordenadas para número de forma segura.
+// Trata valores nulos, vazios e substitui vírgula por ponto.
+const parseCoordinate = (coord: any): number | null => {
+    if (coord === undefined || coord === null || String(coord).trim() === '') {
+        return null;
+    }
+    const num = parseFloat(String(coord).replace(',', '.'));
+    return isNaN(num) ? null : num;
+};
+
+
 /**
  * @route GET /api/cliente/enderecos
  * @description Lista os endereços ativos de um cliente.
@@ -33,7 +44,11 @@ export const getAddresses = async (req: Request, res: Response) => {
  */
 export const addAddress = async (req: Request, res: Response) => {
     const clienteId = req.user?.id;
-    const { apelido, rua, numero, complemento, bairro, cidade, estado, cep, padrao, latitude, longitude } = req.body;
+    const { apelido, rua, numero, complemento, bairro, cidade, estado, cep, padrao } = req.body;
+
+    // ✅ SOLUÇÃO: Usamos a função auxiliar para garantir que a latitude e a longitude sejam números.
+    const latitude = parseCoordinate(req.body.latitude);
+    const longitude = parseCoordinate(req.body.longitude);
 
     if (!clienteId) {
         return res.status(401).json({ message: 'Cliente não autenticado.' });
@@ -78,7 +93,8 @@ export const addAddress = async (req: Request, res: Response) => {
                     id_cliente: clienteId,
                     apelido, rua, numero, complemento, bairro, cidade, estado, cep,
                     padrao: padrao || false,
-                    latitude, longitude,
+                    latitude, // Agora é um número ou nulo
+                    longitude, // Agora é um número ou nulo
                     ativo: true,
                 },
             });
@@ -98,14 +114,17 @@ export const addAddress = async (req: Request, res: Response) => {
 export const updateAddress = async (req: Request, res: Response) => {
     const clienteId = req.user?.id;
     const addressId = parseInt(req.params.id, 10);
-    const { apelido, rua, numero, complemento, bairro, cidade, estado, cep, padrao, latitude, longitude } = req.body;
+    const { apelido, rua, numero, complemento, bairro, cidade, estado, cep, padrao } = req.body;
+
+    // ✅ SOLUÇÃO: Usamos a função auxiliar aqui também para consistência.
+    const latitude = parseCoordinate(req.body.latitude);
+    const longitude = parseCoordinate(req.body.longitude);
 
     if (!clienteId) {
         return res.status(401).json({ message: 'Cliente não autenticado.' });
     }
 
     try {
-        // ✅ CORREÇÃO: Verificar se o endereço existe e pertence ao usuário ANTES da transação.
         const addressToUpdate = await prisma.enderecos_cliente.findFirst({
             where: { id: addressId, id_cliente: clienteId }
         });
@@ -122,7 +141,6 @@ export const updateAddress = async (req: Request, res: Response) => {
                 });
             }
             
-            // ✅ CORREÇÃO: Usar apenas o ID (chave primária) na cláusula 'where' do update.
             return tx.enderecos_cliente.update({
                 where: { id: addressId },
                 data: { apelido, rua, numero, complemento, bairro, cidade, estado, cep, padrao, latitude, longitude },
@@ -203,9 +221,6 @@ export const deleteAddress = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Você não pode remover seu endereço padrão. Defina outro como padrão primeiro.' });
         }
 
-        // ✅ CORREÇÃO: A condição where em um update para soft delete
-        // deve ser única para evitar erros. Usar apenas o ID é suficiente
-        // pois a verificação de posse já foi feita acima.
         await prisma.enderecos_cliente.update({
             where: { id: addressId },
             data: { ativo: false, padrao: false },
@@ -217,3 +232,4 @@ export const deleteAddress = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Erro interno ao deletar endereço.' });
     }
 };
+

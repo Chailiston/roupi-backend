@@ -12,11 +12,11 @@ const router = Router();
 // Rota para listar todos os pedidos do cliente logado.
 // O middleware `authMiddleware` garante que apenas o próprio cliente
 // possa ver a sua lista de pedidos.
-router.get('/orders', authMiddleware, listOrders);
+router.get('/', authMiddleware, listOrders);
 
 // Rota para buscar os detalhes de um pedido específico.
 // O middleware também protege esta rota, e a lógica no controller
 // confirma se o pedido realmente pertence ao cliente que fez a requisição.
-router.get('/orders/:id', authMiddleware, getOrderDetails);
+router.get('/:id', authMiddleware, getOrderDetails);
 
 export default router;

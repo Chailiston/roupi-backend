@@ -5,34 +5,51 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authMiddleware = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-// CORREÇÃO DEFINITIVA: Usar um segredo consistente e forte. Este deve ser o mesmo do authController.
-const JWT_SECRET = process.env.JWT_SECRET || 'segredo-consistente-para-gerar-e-validar-tokens-jwt-2025';
+// Garante que o JWT_SECRET seja carregado a partir das variáveis de ambiente.
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    throw new Error('A variável de ambiente JWT_SECRET não está definida.');
+}
 const authMiddleware = (req, res, next) => {
-    // PASSO DE DIAGNÓSTICO: Esta mensagem deve aparecer no seu terminal do servidor.
-    console.log("--- EXECUTANDO O MIDDLEWARE DE AUTENTICAÇÃO (VERSÃO CORRIGIDA) ---");
-    // 1. Pega o token do cabeçalho de autorização
+    console.log(`--- Middleware de autenticação acionado para a rota: ${req.path} ---`);
     const authHeader = req.headers.authorization;
-    // 2. Verifica se o cabeçalho existe e se está no formato 'Bearer [token]'
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ message: 'Acesso negado. Nenhum token fornecido.' });
+        return res.status(401).json({
+            message: 'Acesso negado. O token de autenticação não foi fornecido ou está mal formatado.',
+            code: 'NO_TOKEN_PROVIDED'
+        });
     }
     const token = authHeader.split(' ')[1];
-    // 3. Verifica se o token existe após o 'Bearer'
     if (!token) {
-        return res.status(401).json({ message: 'Acesso negado. Token mal formatado.' });
+        return res.status(401).json({
+            message: 'Acesso negado. Token ausente após o prefixo "Bearer".',
+            code: 'MALFORMED_TOKEN'
+        });
     }
     try {
-        // 4. Tenta verificar o token com o segredo
         const decoded = jsonwebtoken_1.default.verify(token, JWT_SECRET);
-        // 5. Anexa os dados do usuário decodificados ao objeto 'req'
         req.user = { id: decoded.id, email: decoded.email };
-        // 6. Passa para a próxima função (o controller)
         next();
     }
     catch (error) {
-        // 7. Se a verificação falhar (token inválido, expirado, etc.), retorna um erro
-        console.error('Erro de autenticação:', error);
-        return res.status(401).json({ message: 'Token inválido ou expirado.' });
+        // ✅ CORREÇÃO: Verificamos se 'error' é um objeto de Erro antes de acessar 'error.message'
+        if (error instanceof Error) {
+            console.error('Erro de autenticação no middleware:', error.message);
+        }
+        else {
+            console.error('Erro de autenticação desconhecido no middleware:', error);
+        }
+        let errorMessage = 'Token inválido.';
+        let errorCode = 'INVALID_TOKEN';
+        if (error instanceof jsonwebtoken_1.default.TokenExpiredError) {
+            errorMessage = 'Sua sessão expirou. Por favor, faça login novamente.';
+            errorCode = 'TOKEN_EXPIRED';
+        }
+        else if (error instanceof jsonwebtoken_1.default.JsonWebTokenError) {
+            errorMessage = 'O token fornecido é inválido.';
+            errorCode = 'TOKEN_INVALID';
+        }
+        return res.status(401).json({ message: errorMessage, code: errorCode });
     }
 };
 exports.authMiddleware = authMiddleware;
