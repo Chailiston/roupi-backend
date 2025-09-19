@@ -30,6 +30,9 @@ import profileRoutesCliente from './routes/cliente/profileRoutes';
 import favoriteRoutesCliente from './routes/cliente/favoriteRoutes';
 import chamadoRoutesCliente from './routes/chamadoRoutes';
 
+// ✅ CORREÇÃO: O caminho foi ajustado para encontrar o arquivo dentro da pasta 'cliente'.
+import pagamentosRoutes from './routes/cliente/pagamentosRoutes';
+
 // Rotas de Admin / Relatórios
 import adminRoutes from './routes/adminRoutes';
 import relatorioRoutes from './routes/relatorioRoutes';
@@ -57,6 +60,11 @@ app.get('/api/test-db', async (_req, res) => {
     res.status(500).json({ error: 'Erro ao consultar o banco' });
   }
 });
+
+// ✅ Rota de Webhook (DEVE SER PÚBLICA E USAR O CAMINHO CORRETO)
+// O ideal é que esta rota seja genérica, como /api/pagamentos, pois não é exclusiva do cliente.
+app.use('/api/pagamentos', pagamentosRoutes);
+
 
 // --- API PÚBLICA DO CLIENTE ---
 app.use('/api/cliente/auth', authRoutesCliente);
@@ -110,3 +118,4 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 app.listen(port, () => {
   console.log(`Servidor rodando com sucesso em http://localhost:${port}`);
 });
+

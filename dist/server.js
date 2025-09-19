@@ -31,6 +31,8 @@ const orderRoutes_1 = __importDefault(require("./routes/cliente/orderRoutes"));
 const profileRoutes_1 = __importDefault(require("./routes/cliente/profileRoutes"));
 const favoriteRoutes_1 = __importDefault(require("./routes/cliente/favoriteRoutes"));
 const chamadoRoutes_1 = __importDefault(require("./routes/chamadoRoutes"));
+// ✅ CORREÇÃO: O caminho foi ajustado para encontrar o arquivo dentro da pasta 'cliente'.
+const pagamentosRoutes_1 = __importDefault(require("./routes/cliente/pagamentosRoutes"));
 // Rotas de Admin / Relatórios
 const adminRoutes_1 = __importDefault(require("./routes/adminRoutes"));
 const relatorioRoutes_1 = __importDefault(require("./routes/relatorioRoutes"));
@@ -56,6 +58,9 @@ app.get('/api/test-db', async (_req, res) => {
         res.status(500).json({ error: 'Erro ao consultar o banco' });
     }
 });
+// ✅ Rota de Webhook (DEVE SER PÚBLICA E USAR O CAMINHO CORRETO)
+// O ideal é que esta rota seja genérica, como /api/pagamentos, pois não é exclusiva do cliente.
+app.use('/api/pagamentos', pagamentosRoutes_1.default);
 // --- API PÚBLICA DO CLIENTE ---
 app.use('/api/cliente/auth', authRoutes_2.default);
 app.use('/api/cliente/initial', initialRoutes_1.default);

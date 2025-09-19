@@ -14,10 +14,10 @@ if (!process.env.MP_ACCESS_TOKEN) {
 const client = new mercadopago_1.MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
 const preference = new mercadopago_1.Preference(client);
 /**
- * @route    POST /api/cliente/create-preference
- * @desc     Cria uma preferência de pagamento no Mercado Pago (Checkout Pro).
- * @access   Private
- * @note     Esta é a nova função principal para iniciar um pagamento.
+ * @route     POST /api/cliente/create-preference
+ * @desc      Cria uma preferência de pagamento no Mercado Pago (Checkout Pro).
+ * @access    Private
+ * @note      Esta é a nova função principal para iniciar um pagamento.
  */
 const createPaymentPreference = async (req, res) => {
     // Assumimos que o middleware de autenticação adiciona 'user' ao 'req'
@@ -46,6 +46,8 @@ const createPaymentPreference = async (req, res) => {
                 const storeId = parseInt(storeIdStr, 10);
                 const storeItems = itemsByStore[storeId];
                 let subtotalProdutos = 0;
+                // Array para guardar os itens que serão criados no banco
+                const itensParaSalvarNoPedido = [];
                 for (const item of storeItems) {
                     const variacao = await tx.variacoes_produto.findFirst({
                         where: { id: item.variationId, id_produto: item.id },
@@ -64,6 +66,17 @@ const createPaymentPreference = async (req, res) => {
                         quantity: item.quantity,
                         unit_price: Number(precoUnitario.toFixed(2)),
                         category_id: "fashion",
+                    });
+                    // ✅ CORREÇÃO 1 (PARTE A): Prepara os dados para salvar em `itens_pedido`
+                    itensParaSalvarNoPedido.push({
+                        id_produto: variacao.id_produto,
+                        id_variacao: variacao.id,
+                        nome_produto: variacao.produtos.nome,
+                        tamanho: variacao.tamanho,
+                        cor: variacao.cor,
+                        quantidade: item.quantity,
+                        preco_unitario: precoUnitario,
+                        subtotal: precoUnitario * item.quantity,
                     });
                 }
                 const loja = await tx.lojas.findUnique({ where: { id: storeId } });
@@ -95,6 +108,13 @@ const createPaymentPreference = async (req, res) => {
                     }
                 });
                 idsPedidosCriados.push(pedido.id);
+                // ✅ CORREÇÃO 1 (PARTE B): Salva os itens na tabela `itens_pedido`
+                await tx.itens_pedido.createMany({
+                    data: itensParaSalvarNoPedido.map(item => ({
+                        ...item,
+                        id_pedido: pedido.id, // Associa cada item ao pedido recém-criado
+                    }))
+                });
                 for (const item of storeItems) {
                     await tx.variacoes_produto.update({
                         where: { id: item.variationId },
@@ -119,13 +139,27 @@ const createPaymentPreference = async (req, res) => {
                     },
                     auto_return: "approved",
                     metadata: { ids_pedidos: JSON.stringify(idsPedidosCriados) },
-                    notification_url: "https://roupi-backend.onrender.com/api/pagamentos/webhook"
+                    notification_url: "https://roupi-backend.onrender.com/api/pagamentos/webhook" // Lembre-se de criar esta rota
                 }
             });
+            if (!preferenceResponse.id || !preferenceResponse.init_point) {
+                throw new Error("Falha ao obter ID ou URL de pagamento do Mercado Pago.");
+            }
             await tx.pedidos.updateMany({
                 where: { id: { in: idsPedidosCriados } },
                 data: { mp_preference_id: preferenceResponse.id }
             });
+            // ✅ CORREÇÃO 2: Cria um registro de pagamento para CADA pedido gerado
+            for (const pedidoId of idsPedidosCriados) {
+                await tx.pagamentos.create({
+                    data: {
+                        id_pedido: pedidoId,
+                        metodo_pagamento: 'mercadopago_pro',
+                        status_pagamento: 'pendente', // Status inicial
+                        url_pagamento: preferenceResponse.init_point, // URL para o cliente pagar
+                    }
+                });
+            }
             return { init_point: preferenceResponse.init_point, preference_id: preferenceResponse.id };
         });
         res.status(201).json(result);
@@ -138,9 +172,9 @@ const createPaymentPreference = async (req, res) => {
 };
 exports.createPaymentPreference = createPaymentPreference;
 /**
- * @route    GET /api/cliente/checkout/details
- * @desc     Busca os dados necessários para a tela de checkout (ex: endereços).
- * @access   Private
+ * @route     GET /api/cliente/checkout/details
+ * @desc      Busca os dados necessários para a tela de checkout (ex: endereços).
+ * @access    Private
  */
 const getCheckoutDetails = async (req, res) => {
     const clienteId = req.user?.id;
@@ -161,9 +195,9 @@ const getCheckoutDetails = async (req, res) => {
 };
 exports.getCheckoutDetails = getCheckoutDetails;
 /**
- * @route    POST /api/cliente/orders
- * @desc     [DESCONTINUADO] Rota antiga para o Payment Brick.
- * @access   Private
+ * @route     POST /api/cliente/orders
+ * @desc      [DESCONTINUADO] Rota antiga para o Payment Brick.
+ * @access    Private
  */
 const placeOrder = async (req, res) => {
     res.status(501).json({ message: "Esta rota foi descontinuada. Por favor, use a rota /api/cliente/create-preference." });
