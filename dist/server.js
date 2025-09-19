@@ -17,7 +17,7 @@ const produtoImagemRoutes_1 = __importDefault(require("./routes/produtoImagemRou
 const variacoesRoutes_1 = __importDefault(require("./routes/variacoesRoutes"));
 const pedidoRoutes_1 = __importDefault(require("./routes/pedidoRoutes"));
 const promocoes_1 = __importDefault(require("./routes/promocoes"));
-const uploadRoutes_1 = __importDefault(require("./routes/uploadRoutes")); // Upload é mais genérico, mas usado pelo lojista
+const uploadRoutes_1 = __importDefault(require("./routes/uploadRoutes"));
 // Rotas da API do Cliente
 const authRoutes_2 = __importDefault(require("./routes/cliente/authRoutes"));
 const initialRoutes_1 = __importDefault(require("./routes/cliente/initialRoutes"));
@@ -31,8 +31,8 @@ const orderRoutes_1 = __importDefault(require("./routes/cliente/orderRoutes"));
 const profileRoutes_1 = __importDefault(require("./routes/cliente/profileRoutes"));
 const favoriteRoutes_1 = __importDefault(require("./routes/cliente/favoriteRoutes"));
 const chamadoRoutes_1 = __importDefault(require("./routes/chamadoRoutes"));
-// ✅ CORREÇÃO: O caminho foi ajustado para encontrar o arquivo dentro da pasta 'cliente'.
-const pagamentosRoutes_1 = __importDefault(require("./routes/cliente/pagamentosRoutes"));
+// ✅ CORREÇÃO: Altera a importação para ser direta (named import).
+const pagamentosRoutes_1 = require("./routes/cliente/pagamentosRoutes");
 // Rotas de Admin / Relatórios
 const adminRoutes_1 = __importDefault(require("./routes/adminRoutes"));
 const relatorioRoutes_1 = __importDefault(require("./routes/relatorioRoutes"));
@@ -58,9 +58,8 @@ app.get('/api/test-db', async (_req, res) => {
         res.status(500).json({ error: 'Erro ao consultar o banco' });
     }
 });
-// ✅ Rota de Webhook (DEVE SER PÚBLICA E USAR O CAMINHO CORRETO)
-// O ideal é que esta rota seja genérica, como /api/pagamentos, pois não é exclusiva do cliente.
-app.use('/api/pagamentos', pagamentosRoutes_1.default);
+// ✅ Rota de Webhook (PÚBLICA) - Usa a rota importada diretamente.
+app.use('/api/pagamentos', pagamentosRoutes_1.pagamentosRoutesPublicas);
 // --- API PÚBLICA DO CLIENTE ---
 app.use('/api/cliente/auth', authRoutes_2.default);
 app.use('/api/cliente/initial', initialRoutes_1.default);
@@ -69,13 +68,12 @@ app.use('/api/cliente/produtos', productRoutes_1.default);
 app.use('/api/cliente/lojas', storeRoutes_1.default);
 app.use('/api/cliente/delivery', deliveryRoutes_1.default);
 // --- API PÚBLICA DA LOJA ---
-app.use('/api/auth', authRoutes_1.default); // Login do lojista
-app.use('/api/lojas', lojaRoutes_1.default); // Detalhes públicos da loja
+app.use('/api/auth', authRoutes_1.default);
+app.use('/api/lojas', lojaRoutes_1.default);
 // --- ROTAS PRIVADAS (EXIGEM AUTENTICAÇÃO ESPECÍFICA) ---
-// O middleware de autenticação agora é aplicado diretamente dentro de cada arquivo de rota,
-// tornando o sistema mais modular e claro.
 console.log("Registrando rotas privadas...");
 // --- API PRIVADA DO CLIENTE ---
+app.use('/api/cliente/pagamentos', pagamentosRoutes_1.pagamentosRoutesPrivadas); // ✅ Rota de criação de preferência (PRIVADA) - Usa a rota importada diretamente.
 app.use('/api/cliente/checkout', checkoutRoutes_1.default);
 app.use('/api/cliente/orders', orderRoutes_1.default);
 app.use('/api/cliente/profile', profileRoutes_1.default);
@@ -87,12 +85,12 @@ app.use('/api/lojas/:lojaId/produtos/:produtoId/variacoes', variacoesRoutes_1.de
 app.use('/api/lojas/:lojaId/produtos/:produtoId/imagens', produtoImagemRoutes_1.default);
 app.use('/api/lojas/:lojaId/produtos', produtoRoutes_1.default);
 app.use('/api/lojas/:lojaId/pedidos', pedidoRoutes_1.default);
-app.use('/api/lojas/:lojaId/promocoes', promocoes_1.default); // Assumindo que gerenciar promoções é privado
+app.use('/api/lojas/:lojaId/promocoes', promocoes_1.default);
 // --- ROTAS GENÉRICAS / ADMIN ---
-app.use('/api/upload', uploadRoutes_1.default); // Pode precisar de auth de lojista
-app.use('/api/admins', adminRoutes_1.default); // Precisa de auth de admin
-app.use('/api/relatorios', relatorioRoutes_1.default); // Precisa de auth de admin
-// --- HANDLERS DE ERRO (DEVEM SER OS ÚLTIMOS) ---
+app.use('/api/upload', uploadRoutes_1.default);
+app.use('/api/admins', adminRoutes_1.default);
+app.use('/api/relatorios', relatorioRoutes_1.default);
+// --- HANDLERS DE ERRO ---
 app.use((_req, res) => {
     res.status(404).json({ error: 'Endpoint não encontrado.' });
 });

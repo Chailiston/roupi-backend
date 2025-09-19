@@ -30,8 +30,8 @@ import profileRoutesCliente from './routes/cliente/profileRoutes';
 import favoriteRoutesCliente from './routes/cliente/favoriteRoutes';
 import chamadoRoutesCliente from './routes/chamadoRoutes';
 
-// ✅ CORREÇÃO: Importa as rotas de pagamento como um namespace para garantir a resolução do módulo.
-import * as pagamentosRoutes from './routes/cliente/pagamentosRoutes';
+// ✅ CORREÇÃO: Altera a importação para ser direta (named import).
+import { pagamentosRoutesPrivadas, pagamentosRoutesPublicas } from './routes/cliente/pagamentosRoutes';
 
 // Rotas de Admin / Relatórios
 import adminRoutes from './routes/adminRoutes';
@@ -61,8 +61,8 @@ app.get('/api/test-db', async (_req, res) => {
   }
 });
 
-// ✅ Rota de Webhook (PÚBLICA)
-app.use('/api/pagamentos', pagamentosRoutes.pagamentosRoutesPublicas);
+// ✅ Rota de Webhook (PÚBLICA) - Usa a rota importada diretamente.
+app.use('/api/pagamentos', pagamentosRoutesPublicas);
 
 
 // --- API PÚBLICA DO CLIENTE ---
@@ -81,7 +81,7 @@ app.use('/api/lojas', lojaRoutes);
 console.log("Registrando rotas privadas...");
 
 // --- API PRIVADA DO CLIENTE ---
-app.use('/api/cliente/pagamentos', pagamentosRoutes.pagamentosRoutesPrivadas); // ✅ Rota de criação de preferência (PRIVADA)
+app.use('/api/cliente/pagamentos', pagamentosRoutesPrivadas); // ✅ Rota de criação de preferência (PRIVADA) - Usa a rota importada diretamente.
 app.use('/api/cliente/checkout', checkoutRoutesCliente);
 app.use('/api/cliente/orders', orderRoutesCliente);
 app.use('/api/cliente/profile', profileRoutesCliente);
